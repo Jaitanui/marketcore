@@ -1,3 +1,4 @@
+const cors = require('cors');
 const express = require('express');
 const mysql = require('mysql2');
 const bcrypt = require('bcrypt');
@@ -5,6 +6,11 @@ const session = require('express-session');
 const MySQLStore = require('express-mysql-session')(session);
 const path = require('path');
 require('dotenv').config();
+
+
+
+// Allow requests from your Netlify site
+
 
 //new code from hapa
 const { createClient } = require('@supabase/supabase-js');
@@ -43,11 +49,13 @@ const upload = multer({
 
 
 const app = express();
-const PORT = process.env.PORT || 3000;
+app.set('trust proxy', 1);
 
 
-
-
+app.use(cors({
+    origin: 'https://marketcoremultivendor.netlify.app', 
+    credentials: true
+}));
 
 
 // Middleware
@@ -89,11 +97,11 @@ pool.getConnection((err, connection) => {
 
 // Session store using MySQL (separate pool for sessions)
 const sessionStore = new MySQLStore({
-    host: process.env.DB_HOST || 'localhost',
+    host: process.env.DB_HOST,
     port: 3306,
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || 'K2e8h5@9690jairus',
-    database: process.env.DB_NAME || 'marketcore',
+    user: process.env.DB_USER ,
+    password: process.env.DB_PASSWORD ,
+    database: process.env.DB_NAME,
     clearExpired: true,
     checkExpirationInterval: 900000, // 15 minutes
     expiration: 86400000 // 1 day
@@ -107,7 +115,8 @@ app.use(session({
     cookie: {
         maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
         httpOnly: true,
-        secure: process.env.NODE_ENV === 'production'
+        secure: process.env.NODE_ENV === 'production',
+		sameSite: 'lax'
     }
 }));
 
@@ -1390,8 +1399,9 @@ app.post('/logout', (req, res) => {
 
 
 
-
-
+	
+console.log('Environment:', process.env.NODE_ENV);
+console.log('DB_HOST:', process.env.DB_HOST);
 
 // Start server
 app.listen(PORT, () => {
