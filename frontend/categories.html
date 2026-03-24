@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Categories - MarketCore</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+        }
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+        .nav-links a:hover {
+            opacity: 1;
+        }
+        .logout-btn {
+            background: transparent;
+            border: 1px solid white;
+            color: white;
+            padding: 0.5rem 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .logout-btn:hover {
+            background: white;
+            color: #1e3c72;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+        h1 {
+            color: #1e3c72;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+        .category-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            transition: transform 0.3s, box-shadow 0.3s;
+            text-align: center;
+            border: 1px solid #eef2f6;
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+        .category-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+            border-color: #1e3c72;
+        }
+        .category-icon {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            color: #1e3c72;
+        }
+        .category-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: #1e3c72;
+            margin-bottom: 0.5rem;
+        }
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        .error {
+            color: #721c24;
+            background: #f8d7da;
+            padding: 1rem;
+            border-radius: 6px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo">MarketCore</a>
+        <div class="nav-links">
+            <a href="home.html">Home</a>
+            <a href="products.html">Products</a>
+            <a href="cart.html">Cart</a>
+            <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <h1>Shop by Category</h1>
+        <div id="loading" class="loading">Loading categories...</div>
+        <div id="categoriesContainer" class="categories-grid" style="display: none;"></div>
+    </div>
+
+    <script>
+        const logoutBtn = document.getElementById('logoutBtn');
+        logoutBtn.addEventListener('click', async () => {
+            await fetch('/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        });
+
+        async function loadCategories() {
+            try {
+                const res = await fetch('/api/categories');
+                if (!res.ok) throw new Error('Failed to load categories');
+                const categories = await res.json();
+                displayCategories(categories);
+            } catch (err) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('categoriesContainer').innerHTML = '<div class="error">Error loading categories.</div>';
+                document.getElementById('categoriesContainer').style.display = 'block';
+            }
+        }
+
+        function displayCategories(categories) {
+            const container = document.getElementById('categoriesContainer');
+            const loading = document.getElementById('loading');
+            loading.style.display = 'none';
+
+            if (categories.length === 0) {
+                container.innerHTML = '<div class="error">No categories found.</div>';
+                container.style.display = 'block';
+                return;
+            }
+
+            let html = '';
+            categories.forEach(cat => {
+                html += `
+
+					<a href="/category.html?slug=${cat.slug}" class="category-card">
+						<div class="category-icon">📦</div>
+						<div class="category-name">${cat.name}</div>
+					</a>
+				`;
+            });
+            container.innerHTML = html;
+            container.style.display = 'grid';
+        }
+
+        loadCategories();
+    </script>
+</body>
+</html>

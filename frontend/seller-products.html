@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Products - MarketCore Seller</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+        }
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.8;
+        }
+        .nav-links a:hover { opacity: 1; }
+        .logout-btn {
+            background: transparent;
+            border: 1px solid white;
+            color: white;
+            padding: 0.5rem 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .logout-btn:hover {
+            background: white;
+            color: #1e3c72;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+        h2 {
+            color: #1e3c72;
+            margin-bottom: 1.5rem;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #1e3c72;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .btn {
+            background: #1e3c72;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #0b5e7c;
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .btn-sm {
+            background: #1e3c72;
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 0.5rem;
+            font-size: 0.8rem;
+        }
+        .btn-sm.delete {
+            background: #dc3545;
+        }
+        .btn-sm.delete:hover {
+            background: #c82333;
+        }
+        .btn-sm.edit {
+            background: #ffc107;
+            color: #333;
+        }
+        .btn-sm.edit:hover {
+            background: #e0a800;
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        th {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem;
+            text-align: left;
+        }
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #eef2f6;
+            vertical-align: middle;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        .product-thumb {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .message {
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #1e3c72;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        .image-preview {
+            margin-top: 10px;
+            max-width: 200px;
+            max-height: 200px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 5px;
+            display: none;
+        }
+        .image-preview img {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+        small {
+            color: #666;
+            font-size: 0.8rem;
+        }
+        select {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1rem;
+            background-color: white;
+        }
+        select:focus {
+            outline: none;
+            border-color: #1e3c72;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo">MarketCore Seller</a>
+        <div class="nav-links">
+            <a href="home.html">Home</a>
+            <a href="dashboard.html">Dashboard</a>
+            <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <a href="dashboard.html" class="back-link">← Back to Dashboard</a>
+        <h2>Manage Products</h2>
+
+        <div id="message" class="message"></div>
+
+        <!-- Product Form (Add/Edit) -->
+        <div class="card">
+            <h3 id="formTitle">Add New Product</h3>
+            <form id="productForm">
+                <input type="hidden" id="productId">
+                <div class="form-group">
+                    <label for="name">Product Name *</label>
+                    <input type="text" id="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="price">Price *</label>
+                    <input type="number" step="0.01" id="price" required>
+                </div>
+                <div class="form-group">
+                    <label for="quantity">Quantity</label>
+                    <input type="number" id="quantity" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="category_id">Category</label>
+                    <select id="category_id">
+                        <option value="">-- Select Category --</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label for="productImage">Product Image</label>
+                    <input type="file" id="productImage" name="productImage" accept="image/*">
+                    <small>Optional. Max 5MB. Image will be uploaded after saving.</small>
+                    <div id="imagePreviewContainer" class="image-preview">
+                        <img id="imagePreview" src="#" alt="Image preview">
+                    </div>
+                </div>
+                <button type="submit" class="btn" id="saveBtn">Save Product</button>
+                <button type="button" class="btn" id="cancelEdit" style="background: #6c757d; margin-left: 1rem; display: none;">Cancel</button>
+            </form>
+        </div>
+
+        <!-- Products List -->
+        <div class="card">
+            <h3>Your Products</h3>
+            <div id="loading" class="loading">Loading products...</div>
+            <div id="tableContainer" style="display: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                            <th>Category</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const logoutBtn = document.getElementById('logoutBtn');
+        logoutBtn.addEventListener('click', async () => {
+            await fetch('/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        });
+
+        // Image preview (unchanged)
+        const productImageInput = document.getElementById('productImage');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        const imagePreview = document.getElementById('imagePreview');
+
+        productImageInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreviewContainer.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreviewContainer.style.display = 'none';
+                imagePreview.src = '#';
+            }
+        });
+
+        // Load categories into select
+        async function loadCategories() {
+            try {
+                const res = await fetch('/api/categories');
+                const categories = await res.json();
+                const select = document.getElementById('category_id');
+                select.innerHTML = '<option value="">-- Select Category --</option>';
+                categories.forEach(cat => {
+                    const option = document.createElement('option');
+                    option.value = cat.id;
+                    option.textContent = cat.name;
+                    select.appendChild(option);
+                });
+            } catch (err) {
+                console.error('Error loading categories:', err);
+            }
+        }
+
+        // Helper to show messages
+        function showMessage(msg, type) {
+            const msgDiv = document.getElementById('message');
+            msgDiv.textContent = msg;
+            msgDiv.className = `message ${type}`;
+            msgDiv.style.display = 'block';
+            setTimeout(() => msgDiv.style.display = 'none', 5000);
+        }
+
+        // Fetch and display products
+        async function loadProducts() {
+            try {
+                const res = await fetch('/api/seller/products');
+                if (!res.ok) {
+                    if (res.status === 403) {
+                        window.location.href = '/dashboard';
+                        return;
+                    }
+                    throw new Error('Failed to load products');
+                }
+                const products = await res.json();
+                const tbody = document.getElementById('productsTableBody');
+                tbody.innerHTML = '';
+
+                if (products.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No products found. Add your first product above.</td></tr>';
+                } else {
+                    for (const p of products) {
+                        // Fetch category name (optional, but nice)
+                        let categoryName = p.category_id ? 'Loading...' : '-';
+                        if (p.category_id) {
+                            try {
+                                const catRes = await fetch(`/api/categories/${p.category_id}`); // need this endpoint or join in backend
+                                // For simplicity, we'll join in backend – modify GET /api/seller/products to include category name
+                                // For now, we'll just show the id or we can modify backend query
+                                categoryName = p.category_name || p.category_id; // assuming backend returns category_name
+                            } catch (e) {}
+                        }
+                        const row = document.createElement('tr');
+                        const imageHtml = p.image_url ? `<img src="${p.image_url}" class="product-thumb" alt="${p.name}">` : '—';
+                        row.innerHTML = `
+                            <td>${imageHtml}</td>
+                            <td>${p.id}</td>
+                            <td>${p.name}</td>
+                            <td>$${parseFloat(p.price).toFixed(2)}</td>
+                            <td>${p.quantity}</td>
+                            <td>${p.category_name || (p.category_id ? 'ID: '+p.category_id : '-')}</td>
+                            <td>
+                                <button class="btn-sm edit" onclick="editProduct(${p.id})">Edit</button>
+                                <button class="btn-sm delete" onclick="deleteProduct(${p.id})">Delete</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    }
+                }
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('tableContainer').style.display = 'block';
+            } catch (err) {
+                console.error(err);
+                showMessage('Error loading products', 'error');
+            }
+        }
+
+        // Handle form submit (add/update)
+        document.getElementById('productForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById('saveBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+
+            const productId = document.getElementById('productId').value;
+            const fileInput = document.getElementById('productImage');
+            let imageUrl = null;
+
+            try {
+                // Upload image if selected
+                if (fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    if (file.size > 5 * 1024 * 1024) {
+                        showMessage('File too large. Maximum 5MB.', 'error');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Save Product';
+                        return;
+                    }
+                    const uploadFormData = new FormData();
+                    uploadFormData.append('image', file);
+                    const uploadRes = await fetch('/api/upload', { method: 'POST', body: uploadFormData });
+                    const uploadData = await uploadRes.json();
+                    if (!uploadRes.ok) {
+                        showMessage(uploadData.error || 'Image upload failed', 'error');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Save Product';
+                        return;
+                    }
+                    imageUrl = uploadData.url;
+                }
+
+                // Prepare product data (category_id)
+                const categorySelect = document.getElementById('category_id');
+                const categoryId = categorySelect.value ? parseInt(categorySelect.value) : null;
+
+                const productData = {
+                    name: document.getElementById('name').value,
+                    description: document.getElementById('description').value,
+                    price: parseFloat(document.getElementById('price').value),
+                    quantity: parseInt(document.getElementById('quantity').value) || 0,
+                    category_id: categoryId,
+                    image_url: imageUrl
+                };
+
+                const url = productId ? `/api/seller/products/${productId}` : '/api/seller/products';
+                const method = productId ? 'PUT' : 'POST';
+
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(productData)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showMessage(productId ? 'Product updated' : 'Product created', 'success');
+                    resetForm();
+                    loadProducts();
+                } else {
+                    showMessage(data.error || 'Error saving product', 'error');
+                }
+            } catch (err) {
+                console.error('Error:', err);
+                showMessage('Network error', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Save Product';
+            }
+        });
+
+        // Edit product: fetch and populate form
+        window.editProduct = async (id) => {
+            try {
+                const res = await fetch(`/api/seller/products/${id}`);
+                if (!res.ok) throw new Error('Failed to fetch');
+                const product = await res.json();
+                document.getElementById('productId').value = product.id;
+                document.getElementById('name').value = product.name;
+                document.getElementById('description').value = product.description || '';
+                document.getElementById('price').value = product.price;
+                document.getElementById('quantity').value = product.quantity;
+                // Set category dropdown
+                if (product.category_id) {
+                    document.getElementById('category_id').value = product.category_id;
+                } else {
+                    document.getElementById('category_id').value = '';
+                }
+                if (product.image_url) {
+                    imagePreview.src = product.image_url;
+                    imagePreviewContainer.style.display = 'block';
+                } else {
+                    imagePreviewContainer.style.display = 'none';
+                }
+                document.getElementById('formTitle').textContent = 'Edit Product';
+                document.getElementById('cancelEdit').style.display = 'inline-block';
+                document.getElementById('productImage').value = '';
+            } catch (err) {
+                showMessage('Error loading product for edit', 'error');
+            }
+        };
+
+        // Delete product
+        window.deleteProduct = async (id) => {
+            if (!confirm('Delete this product?')) return;
+            try {
+                const res = await fetch(`/api/seller/products/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    showMessage('Product deleted', 'success');
+                    loadProducts();
+                } else {
+                    showMessage('Delete failed', 'error');
+                }
+            } catch (err) {
+                showMessage('Network error', 'error');
+            }
+        };
+
+        // Reset form to "Add" mode
+        function resetForm() {
+            document.getElementById('productForm').reset();
+            document.getElementById('productId').value = '';
+            document.getElementById('formTitle').textContent = 'Add New Product';
+            document.getElementById('cancelEdit').style.display = 'none';
+            imagePreviewContainer.style.display = 'none';
+            imagePreview.src = '#';
+            document.getElementById('category_id').value = '';
+        }
+
+        document.getElementById('cancelEdit').addEventListener('click', resetForm);
+
+        // Initial load
+        loadCategories();
+        loadProducts();
+    </script>
+</body>
+</html>

@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Orders - MarketCore Admin</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+        }
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.8;
+        }
+        .nav-links a:hover { opacity: 1; }
+        .logout-btn {
+            background: transparent;
+            border: 1px solid white;
+            color: white;
+            padding: 0.5rem 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .logout-btn:hover {
+            background: white;
+            color: #1e3c72;
+        }
+        .container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+        h2 {
+            color: #1e3c72;
+            margin-bottom: 1.5rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #1e3c72;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .table-responsive {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        }
+        .orders-table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 1000px; /* forces scroll on smaller screens */
+        }
+        .orders-table th {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem;
+            text-align: left;
+        }
+        .orders-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #eef2f6;
+            vertical-align: top;
+        }
+        .orders-table tr:last-child td {
+            border-bottom: none;
+        }
+        .order-details-btn {
+            background: #1e3c72;
+            color: white;
+            border: none;
+            padding: 0.3rem 0.8rem;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+        .order-details-btn:hover {
+            background: #0b5e7c;
+        }
+        .items-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #f9f9f9;
+            border-radius: 4px;
+            font-size: 0.8rem;
+        }
+        .items-table th {
+            background: #ddd;
+            padding: 0.3rem;
+            font-size: 0.7rem;
+            text-align: left;
+        }
+        .items-table td {
+            padding: 0.3rem;
+            border-bottom: 1px solid #eee;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.2rem 0.5rem;
+            border-radius: 30px;
+            font-size: 0.7rem;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-processing { background: #cce5ff; color: #004085; }
+        .status-shipped { background: #d1ecf1; color: #0c5460; }
+        .status-delivered { background: #d4edda; color: #155724; }
+        .status-cancelled { background: #f8d7da; color: #721c24; }
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        .error {
+            color: #721c24;
+            background: #f8d7da;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+        .no-orders {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+            background: white;
+            border-radius: 12px;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo">MarketCore Admin</a>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="dashboard.html">Dashboard</a>
+            <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <a href="dashboard.html" class="back-link">← Back to Dashboard</a>
+        <h2>All Orders</h2>
+        <div id="loading" class="loading">Loading orders...</div>
+        <div id="ordersContainer" style="display: none;"></div>
+    </div>
+
+    <script>
+        const logoutBtn = document.getElementById('logoutBtn');
+        logoutBtn.addEventListener('click', async () => {
+            await fetch('/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        });
+
+        async function loadOrders() {
+            try {
+                const res = await fetch('/api/admin/orders');
+                if (!res.ok) {
+                    if (res.status === 403) {
+                        window.location.href = '/dashboard';
+                        return;
+                    }
+                    throw new Error('Failed to load orders');
+                }
+                const orders = await res.json();
+                displayOrders(orders);
+            } catch (err) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('ordersContainer').innerHTML = '<div class="error">Error loading orders.</div>';
+            }
+        }
+
+        function displayOrders(orders) {
+            const container = document.getElementById('ordersContainer');
+            const loading = document.getElementById('loading');
+            loading.style.display = 'none';
+
+            if (orders.length === 0) {
+                container.innerHTML = '<div class="no-orders">No orders found.</div>';
+                container.style.display = 'block';
+                return;
+            }
+
+            let html = '<div class="table-responsive"><table class="orders-table"><thead><tr><th>Order #</th><th>Date</th><th>Customer</th><th>Total</th><th>Payment</th><th>Status</th><th>Items</th></tr></thead><tbody>';
+
+            orders.forEach(order => {
+                const orderDate = new Date(order.order_date).toLocaleDateString();
+                const paymentStatusClass = `status-badge status-${order.payment_status}`;
+                const orderStatusClass = `status-badge status-${order.status}`;
+
+                let itemsHtml = '<table class="items-table"><thead><tr><th>Product</th><th>Qty</th><th>Price</th><th>Total</th><th>Seller</th><th>Status</th></tr></thead><tbody>';
+                order.items.forEach(item => {
+                    const itemStatusClass = `status-badge status-${item.item_status}`;
+                    itemsHtml += `
+                        <tr>
+                            <td>${item.product_name}</td>
+                            <td>${item.quantity}</td>
+                            <td>$${parseFloat(item.price_per_unit).toFixed(2)}</td>
+                            <td>$${parseFloat(item.total_price).toFixed(2)}</td>
+                            <td>${item.seller_name || 'Unknown'}</td>
+                            <td><span class="${itemStatusClass}">${item.item_status}</span></td>
+                        </tr>
+                    `;
+                });
+                itemsHtml += '</tbody></table>';
+
+                html += `
+                    <tr>
+                        <td><strong>${order.order_number}</strong></td>
+                        <td>${orderDate}</td>
+                        <td>${order.customer_name}<br><small>${order.customer_email}</small></td>
+                        <td>$${parseFloat(order.grand_total).toFixed(2)}</td>
+                        <td><span class="${paymentStatusClass}">${order.payment_status}</span></td>
+                        <td><span class="${orderStatusClass}">${order.status}</span></td>
+                        <td>${itemsHtml}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table></div>';
+            container.innerHTML = html;
+            container.style.display = 'block';
+        }
+
+        loadOrders();
+    </script>
+</body>
+</html>

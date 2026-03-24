@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Become a Seller - MarketCore</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+        }
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+        .nav-links a:hover { opacity: 1; }
+        .logout-btn {
+            background: transparent;
+            border: 1px solid white;
+            color: white;
+            padding: 0.5rem 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .logout-btn:hover {
+            background: white;
+            color: #1e3c72;
+        }
+        .container {
+            max-width: 800px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+        .card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            border-left: 6px solid #1e3c72;
+        }
+        h2 {
+            color: #1e3c72;
+            margin-bottom: 1.5rem;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1rem;
+            transition: border-color 0.3s;
+        }
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #1e3c72;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .btn {
+            background: #1e3c72;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 30px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #0b5e7c;
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .message {
+            margin-top: 1.5rem;
+            padding: 1rem;
+            border-radius: 6px;
+            display: none;
+        }
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            display: block;
+        }
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+            display: block;
+        }
+        .info-box {
+            background: #e7f3ff;
+            border-left: 4px solid #1e3c72;
+            padding: 1rem;
+            margin-bottom: 1.5rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #1e3c72;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .image-preview {
+            margin-top: 10px;
+            max-width: 200px;
+            max-height: 200px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 5px;
+            display: none;
+        }
+        .image-preview img {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+        small {
+            color: #666;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo">MarketCore</a>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/dashboard">Dashboard</a>
+            <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <a href="/dashboard" class="back-link">← Back to Dashboard</a>
+        <div class="card">
+            <h2>Become a Seller</h2>
+            <div id="applicationStatus" class="info-box" style="display:none;"></div>
+            <form id="sellerForm">
+                <div class="form-group">
+                    <label for="storeName">Store Name *</label>
+                    <input type="text" id="storeName" name="storeName" required>
+                </div>
+                <div class="form-group">
+                    <label for="storeDescription">Store Description</label>
+                    <textarea id="storeDescription" name="storeDescription"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="businessAddress">Business Address *</label>
+                    <input type="text" id="businessAddress" name="businessAddress" required placeholder="Full address">
+                </div>
+                <div class="form-group">
+                    <label for="taxId">Tax ID / VAT Number (optional)</label>
+                    <input type="text" id="taxId" name="taxId">
+                </div>
+                <div class="form-group">
+                    <label for="storeImage">Store Logo / Image</label>
+                    <input type="file" id="storeImage" name="storeImage" accept="image/*">
+                    <small>Optional. Max 5MB. Image will be uploaded after submission.</small>
+                    <div id="imagePreviewContainer" class="image-preview">
+                        <img id="imagePreview" src="#" alt="Image preview">
+                    </div>
+                </div>
+                <button type="submit" class="btn" id="submitBtn">Submit Application</button>
+            </form>
+            <div id="message" class="message"></div>
+        </div>
+    </div>
+
+    <script>
+        const logoutBtn = document.getElementById('logoutBtn');
+        logoutBtn.addEventListener('click', async () => {
+            await fetch('/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        });
+
+        // Image preview
+        const storeImageInput = document.getElementById('storeImage');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        const imagePreview = document.getElementById('imagePreview');
+
+        storeImageInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreviewContainer.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreviewContainer.style.display = 'none';
+                imagePreview.src = '#';
+            }
+        });
+
+        // Check if user already has an application
+        async function checkApplication() {
+            try {
+                const res = await fetch('/api/seller/application');
+                if (res.status === 401) {
+                    window.location.href = '/login.html';
+                    return;
+                }
+                const data = await res.json();
+                if (data) {
+                    const statusDiv = document.getElementById('applicationStatus');
+                    let statusText = '';
+                    if (data.status === 'pending') {
+                        statusText = 'Your seller application is pending admin approval.';
+                        document.getElementById('sellerForm').style.display = 'none';
+                    } else if (data.status === 'approved') {
+                        statusText = 'Congratulations! You are already an approved seller. You can manage your store from the dashboard.';
+                        document.getElementById('sellerForm').style.display = 'none';
+                    } else if (data.status === 'suspended') {
+                        statusText = 'Your seller account is suspended. Please contact support.';
+                        document.getElementById('sellerForm').style.display = 'none';
+                    }
+                    statusDiv.textContent = statusText;
+                    statusDiv.style.display = 'block';
+                }
+            } catch (err) {
+                console.error('Error checking application:', err);
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('sellerForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Submitting...';
+
+            const formData = {
+                storeName: document.getElementById('storeName').value.trim(),
+                storeDescription: document.getElementById('storeDescription').value.trim(),
+                businessAddress: document.getElementById('businessAddress').value.trim(),
+                taxId: document.getElementById('taxId').value.trim()
+            };
+
+            const messageDiv = document.getElementById('message');
+            const fileInput = document.getElementById('storeImage');
+            let imageUrl = null;
+
+            messageDiv.style.display = 'none';
+
+            try {
+                // 1. Upload image if selected
+                if (fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    
+                    // Validate file size (5MB max)
+                    if (file.size > 5 * 1024 * 1024) {
+                        showMessage('File too large. Maximum 5MB.', 'error');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Submit Application';
+                        return;
+                    }
+
+                    // Upload file
+                    const uploadFormData = new FormData();
+                    uploadFormData.append('image', file);
+
+                    const uploadRes = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: uploadFormData
+                    });
+
+                    const uploadData = await uploadRes.json();
+                    
+                    if (!uploadRes.ok) {
+                        showMessage(uploadData.error || 'Image upload failed', 'error');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Submit Application';
+                        return;
+                    }
+
+                    imageUrl = uploadData.url;
+                }
+
+                // 2. Submit seller application with image URL
+                const applicationData = {
+                    ...formData,
+                    storeImage: imageUrl  // Add the image URL to application data
+                };
+
+                const res = await fetch('/api/seller/apply', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(applicationData)
+                });
+
+                const data = await res.json();
+                
+                if (res.ok) {
+                    showMessage('Application submitted successfully!', 'success');
+                    document.getElementById('sellerForm').reset();
+                    imagePreviewContainer.style.display = 'none';
+                    imagePreview.src = '#';
+                    setTimeout(() => checkApplication(), 1500);
+                } else {
+                    showMessage(data.error || 'Application failed', 'error');
+                }
+            } catch (err) {
+                console.error('Error:', err);
+                showMessage('Network error. Please try again.', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Submit Application';
+            }
+        });
+
+        function showMessage(msg, type) {
+            const messageDiv = document.getElementById('message');
+            messageDiv.textContent = msg;
+            messageDiv.className = `message ${type}`;
+            messageDiv.style.display = 'block';
+        }
+
+        // Run on page load
+        checkApplication();
+    </script>
+</body>
+</html>

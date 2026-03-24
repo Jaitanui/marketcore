@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - MarketCore</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body { background: #f5f5f5; }
+        .navbar {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar .logo { font-size: 1.5rem; font-weight: bold; }
+        .navbar .nav-links a {
+            color: white;
+            margin-left: 1.5rem;
+            text-decoration: none;
+            opacity: 0.8;
+        }
+        .navbar .nav-links a:hover { opacity: 1; }
+        .container { max-width: 1200px; margin: 2rem auto; padding: 0 1rem; }
+        .welcome-card {
+            background: white;
+            border-radius: 8px;
+            padding: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+        }
+        .role-badge {
+            display: inline-block;
+            background: #0b5e7c;
+            color: white;
+            padding: 0.3rem 1rem;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            margin-top: 0.5rem;
+        }
+        .modules {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        .module-card {
+            background: white;
+            border-radius: 8px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            transition: transform 0.2s;
+        }
+        .module-card:hover { transform: translateY(-5px); }
+        .module-card h3 { color: #1e3c72; margin-bottom: 1rem; }
+        .module-card p { color: #666; margin-bottom: 1.5rem; }
+        .btn {
+            background: #1e3c72;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover { background: #0b5e7c; }
+        .logout-form { display: inline; }
+        .logout-btn {
+            background: transparent;
+            border: 1px solid white;
+            color: white;
+            padding: 0.3rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 1rem;
+        }
+        .logout-btn:hover { background: rgba(255,255,255,0.2); }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo">MarketCore</div>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/dashboard">Dashboard</a>
+            <form action="/logout" method="post" class="logout-form">
+                <button type="submit" class="logout-btn">Logout</button>
+            </form>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="welcome-card">
+            <h1>Welcome, <%= user.full_name %>!</h1>
+            <p>Email: <%= user.email %></p>
+            <span class="role-badge">Role: <%= user.role %></span>
+        </div>
+
+        <h2 style="margin-bottom: 1rem;">Your Modules</h2>
+        <div class="modules">
+            <!-- Common modules for all roles -->
+            <div class="module-card">
+                <h3>Profile</h3>
+                <p>Manage your personal information and settings.</p>
+                <a href="/profile" class="btn">Go to Profile</a>
+            </div>
+
+            <!-- Buyer-specific modules -->
+            <% if (user.role === 'buyer' || user.role === 'admin') { %>
+            <div class="module-card">
+                <h3>My Orders</h3>
+                <p>Track your purchases and order history.</p>
+                <a href="/orders" class="btn">View Orders</a>
+            </div>
+            <div class="module-card">
+                <h3>Wishlist</h3>
+                <p>Items you've saved for later.</p>
+                <a href="/wishlist" class="btn">View Wishlist</a>
+            </div>
+            <% } %>
+
+            <!-- Seller-specific modules -->
+            <% if (user.role === 'seller' || user.role === 'admin') { %>
+            <div class="module-card">
+                <h3>My Store</h3>
+                <p>Manage your storefront and products.</p>
+                <a href="/seller/store" class="btn">Manage Store</a>
+            </div>
+            <div class="module-card">
+                <h3>Products</h3>
+                <p>Add, edit, or remove your products.</p>
+                <a href="/seller/products" class="btn">Manage Products</a>
+            </div>
+            <div class="module-card">
+                <h3>Orders</h3>
+                <p>View and fulfill customer orders.</p>
+                <a href="/seller/orders" class="btn">Manage Orders</a>
+            </div>
+            <div class="module-card">
+                <h3>Earnings</h3>
+                <p>Track your sales and payouts.</p>
+                <a href="/seller/earnings" class="btn">View Earnings</a>
+            </div>
+            <% } %>
+
+            <!-- Admin-specific modules -->
+            <% if (user.role === 'admin') { %>
+            <div class="module-card">
+                <h3>Manage Sellers</h3>
+                <p>Approve or suspend seller accounts.</p>
+                <a href="/admin/sellers" class="btn">Manage Sellers</a>
+            </div>
+            <div class="module-card">
+                <h3>Categories</h3>
+                <p>Manage product categories.</p>
+                <a href="/admin/categories" class="btn">Manage Categories</a>
+            </div>
+            <div class="module-card">
+                <h3>All Orders</h3>
+                <p>View all platform orders.</p>
+                <a href="/admin/orders" class="btn">View Orders</a>
+            </div>
+            <div class="module-card">
+                <h3>Analytics</h3>
+                <p>Platform performance reports.</p>
+                <a href="/admin/analytics" class="btn">View Analytics</a>
+            </div>
+            <% } %>
+        </div>
+    </div>
+</body>
+</html>

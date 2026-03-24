@@ -1,0 +1,1376 @@
+Buyer Product Catalog – Display all products to buyers, with search, filtering, and product detail pages. This is essential before anyone can buy.
+
+Shopping Cart – Allow buyers to add products from multiple sellers to a cart (multi‑vendor cart).
+
+Checkout & Orders – Process orders, split by seller, handle payments (Stripe Connect).
+
+Seller Storefront – Each seller gets a public store page showing their products.
+
+Order Management for Sellers – Sellers view and update orders for their products.
+
+
+
+
+
+
+TABLES
+Cart
+//HERE TO
+-- Carts table
+CREATE TABLE IF NOT EXISTS carts (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    user_id INT NULL,
+    session_id VARCHAR(255) NULL,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE,
+    INDEX idx_user_session (user_id, session_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Cart items table
+CREATE TABLE IF NOT EXISTS cart_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    cart_id INT NOT NULL,
+    product_id INT NOT NULL,
+    quantity INT NOT NULL DEFAULT 1,
+    price DECIMAL(10,2) NOT NULL, -- snapshot at add time
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (cart_id) REFERENCES carts(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    UNIQUE KEY unique_cart_product (cart_id, product_id) -- prevent duplicate product entries
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+//TO HERE
+
+
+
+orders
+-- Orders table
+CREATE TABLE IF NOT EXISTS orders (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_number VARCHAR(50) UNIQUE NOT NULL,
+    user_id INT NULL, -- NULL for guest orders (if we allow guest checkout)
+    session_id VARCHAR(255) NULL, -- for guests
+    order_date TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    subtotal DECIMAL(10,2) NOT NULL,
+    shipping_total DECIMAL(10,2) DEFAULT 0.00,
+    tax_total DECIMAL(10,2) DEFAULT 0.00,
+    grand_total DECIMAL(10,2) NOT NULL,
+    status ENUM('pending','processing','shipped','delivered','cancelled') DEFAULT 'pending',
+    payment_status ENUM('pending','paid','failed') DEFAULT 'pending',
+    shipping_address TEXT NOT NULL,
+    billing_address TEXT NOT NULL,
+    payment_method VARCHAR(50),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL,
+    INDEX idx_user (user_id),
+    INDEX idx_order_number (order_number)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Order items table (one order can have items from multiple sellers)
+CREATE TABLE IF NOT EXISTS order_items (
+    id INT AUTO_INCREMENT PRIMARY KEY,
+    order_id INT NOT NULL,
+    seller_id INT NOT NULL,
+    product_id INT NOT NULL,
+    product_name VARCHAR(255) NOT NULL,
+    quantity INT NOT NULL,
+    price_per_unit DECIMAL(10,2) NOT NULL,
+    total_price DECIMAL(10,2) NOT NULL,
+    status ENUM('pending','processing','shipped','delivered','cancelled','returned') DEFAULT 'pending',
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+    FOREIGN KEY (order_id) REFERENCES orders(id) ON DELETE CASCADE,
+    FOREIGN KEY (seller_id) REFERENCES sellers(id) ON DELETE CASCADE,
+    FOREIGN KEY (product_id) REFERENCES products(id) ON DELETE CASCADE,
+    INDEX idx_order (order_id),
+    INDEX idx_seller (seller_id)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+
+
+
+
+
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - MarketCore</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .navbar .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+
+        .nav-links a:hover {
+            opacity: 1;
+        }
+
+        .logout-btn {
+            background: transparent;
+            border: 1px solid white;
+            color: white;
+            padding: 0.5rem 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: white;
+            color: #1e3c72;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+
+        .welcome-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            border-left: 6px solid #1e3c72;
+        }
+
+        .welcome-card h1 {
+            font-size: 2rem;
+            color: #1e3c72;
+            margin-bottom: 0.5rem;
+        }
+
+        .welcome-card p {
+            color: #555;
+            margin-bottom: 0.5rem;
+        }
+
+        .role-badge {
+            display: inline-block;
+            background: #0b5e7c;
+            color: white;
+            padding: 0.3rem 1.2rem;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+
+        .modules {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .module-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.8rem;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            transition: transform 0.3s, box-shadow 0.3s;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #eef2f6;
+        }
+
+        .module-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+        }
+
+        .module-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .module-card h3 {
+            color: #1e3c72;
+            font-size: 1.4rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .module-card p {
+            color: #666;
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+            flex-grow: 1;
+        }
+
+        .module-btn {
+            background: #1e3c72;
+            color: white;
+            padding: 0.8rem 1.2rem;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            text-align: center;
+            transition: background 0.3s;
+            border: none;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .module-btn:hover {
+            background: #0b5e7c;
+        }
+
+        .loading {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #1e3c72;
+            padding: 2rem;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 3rem;
+            color: #777;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo">MarketCore</a>
+        <div class="nav-links">
+            <a href="/">Home</a>
+			<a href="products.html">See What's being sold</a>
+            <a href="cart.html">Cart</a>
+            <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="welcomeCard" class="welcome-card" style="display: none;">
+            <h1 id="welcomeMessage">Welcome back!</h1>
+            <p id="userEmail"></p>
+            <span id="roleBadge" class="role-badge"></span>
+        </div>
+
+        <h2 style="color: #1e3c72; margin-bottom: 1.5rem;">Your Modules</h2>
+        <div id="loading" class="loading">Loading dashboard...</div>
+        <div id="modulesContainer" class="modules" style="display: none;"></div>
+
+        <div class="footer">
+            &copy; 2026 MarketCore. All rights reserved.
+        </div>
+    </div>
+
+    <script>
+        // Module definitions
+        const modulesByRole = {
+            buyer: [
+			
+				
+				{ icon: '🛒', title: 'Commodities', desc: 'products from sellers', link: 'products.html' },
+
+				{ icon: '📦', title: 'My Orders', desc: 'Track your purchases and order history.', link: '/orders.html' },				{ icon: '🛒', title: 'Commodities', desc: 'products from sellers', link: 'products.html' },
+                { icon: '❤️', title: 'Wishlist', desc: 'Items you\'ve saved for later.', link: 'wishlist.html' },
+                { icon: '👤', title: 'Profile', desc: 'Manage your personal information.', link: '/profile.html' }
+            ],
+            seller: [
+                { icon: '🏪', title: 'My Store', desc: 'Manage your storefront and settings.', link: 'store.html' },
+                { icon: '🛍️', title: 'Products', desc: 'Add, edit, or remove your products.', link: '/seller-products.html' },
+                { icon: '📋', title: 'Orders', desc: 'View and fulfill customer orders.', link: 'seller-orders.html' },
+                { icon: '💰', title: 'Earnings', desc: 'Track your sales and payouts.', link: '/seller/earnings.html' },
+                { icon: '👤', title: 'Profile', desc: 'Manage your personal information.', link: '/profile.html' }
+            ],
+            admin: [
+                { icon: '👥', title: 'Manage Sellers', desc: 'Approve or suspend seller accounts.', link: '/admin-sellers.html' },
+                { icon: '📂', title: 'Categories', desc: 'Manage product categories.', link: '/admin/categories.html' },
+                { icon: '📦', title: 'All Orders', desc: 'View all platform orders.', link: '/admin/orders.html' },
+                { icon: '📊', title: 'Analytics', desc: 'Platform performance reports.', link: '/admin/analytics.html' },
+                { icon: '👤', title: 'Profile', desc: 'Manage your personal information.', link: '/profile.html' }
+            ]
+        };
+
+        // Helper to add a card to the modules container
+        function addModuleCard(icon, title, desc, link = null) {
+            const container = document.getElementById('modulesContainer');
+            const card = document.createElement('div');
+            card.className = 'module-card';
+            card.innerHTML = `
+                <div class="module-icon">${icon}</div>
+                <h3>${title}</h3>
+                <p>${desc}</p>
+                ${link ? `<a href="${link}" class="module-btn">Go to ${title}</a>` : ''}
+            `;
+            container.appendChild(card);
+        }
+
+        // Main function to load dashboard
+        async function loadDashboard() {
+            try {
+                // 1. Fetch user data
+                const userRes = await fetch('/api/user');
+                if (!userRes.ok) {
+                    if (userRes.status === 401) {
+                        window.location.href = '/login.html';
+                        return;
+                    }
+                    throw new Error('Failed to fetch user data');
+                }
+                const user = await userRes.json();
+
+                // 2. Display welcome card
+                document.getElementById('welcomeMessage').textContent = `Welcome back, ${user.full_name}!`;
+                document.getElementById('userEmail').innerHTML = `<strong>Email:</strong> ${user.email}`;
+                document.getElementById('roleBadge').textContent = user.role;
+                document.getElementById('welcomeCard').style.display = 'block';
+
+                // 3. Render role-based modules
+                const modules = modulesByRole[user.role] || modulesByRole.buyer;
+                const container = document.getElementById('modulesContainer');
+                container.innerHTML = ''; // Clear any previous content
+                modules.forEach(module => {
+                    addModuleCard(module.icon, module.title, module.desc, module.link);
+                });
+				
+
+                // 4. If user is a buyer, check seller application status
+                if (user.role === 'buyer') {
+                    try {
+                        const appRes = await fetch('/api/seller/application');
+                        if (appRes.ok) {
+                            const appData = await appRes.json();
+                            if (!appData) {
+                                // No application yet
+                                addModuleCard('🏪', 'Become a Seller', 'Start selling your products.', '/seller-apply.html');
+                            } else if (appData.status === 'pending') {
+                                addModuleCard('⏳', 'Application Pending', 'Your seller application is under review.');
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Error fetching seller application:', err);
+                    }
+                }
+
+                // 5. Hide loading, show modules
+                document.getElementById('loading').style.display = 'none';
+                container.style.display = 'grid';
+
+            } catch (error) {
+                console.error('Dashboard error:', error);
+                document.getElementById('loading').innerHTML = '<div class="error-message">Error loading dashboard. Please <a href="/dashboard">refresh</a>.</div>';
+            }
+        }
+
+        // Logout handler
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/logout', { method: 'POST' });
+                if (response.ok) {
+                    window.location.href = '/login.html';
+                } else {
+                    alert('Logout failed.');
+                }
+            } catch (err) {
+                console.error('Logout error:', err);
+            }
+        });
+
+        // Start loading
+        loadDashboard();
+    </script>
+</body>
+
+
+
+// POST /api/seller/products - create a new product
+app.post('/api/seller/products', async (req, res) => {
+    if (!req.session.userId || req.session.userRole !== 'seller') {
+        return res.status(403).json({ error: 'Seller access required' });
+    }
+    const { name, description, price, quantity, category, image_url } = req.body;
+    if (!name || !price) {
+        return res.status(400).json({ error: 'Name and price are required' });
+    }
+    try {
+        const [sellerRows] = await pool.promise().query('SELECT id FROM sellers WHERE user_id = ?', [req.session.userId]);
+        if (sellerRows.length === 0) {
+            return res.status(404).json({ error: 'Seller record not found' });
+        }
+        const sellerId = sellerRows[0].id;
+
+        const [result] = await pool.promise().query(
+            'INSERT INTO products (seller_id, name, description, price, quantity, category, image_url) VALUES (?, ?, ?, ?, ?, ?, ?)',
+            [sellerId, name, description || null, price, quantity || 0, category || null, image_url || null]
+        );
+        res.status(201).json({ message: 'Product created', productId: result.insertId });
+    } catch (err) {
+        console.error('Error creating product:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+
+
+// PUT /api/seller/products/:id - update a product
+app.put('/api/seller/products/:id', async (req, res) => {
+    if (!req.session.userId || req.session.userRole !== 'seller') {
+        return res.status(403).json({ error: 'Seller access required' });
+    }
+    const productId = req.params.id;
+    const { name, description, price, quantity, category, image_url } = req.body;
+    try {
+        const [sellerRows] = await pool.promise().query('SELECT id FROM sellers WHERE user_id = ?', [req.session.userId]);
+        if (sellerRows.length === 0) {
+            return res.status(404).json({ error: 'Seller record not found' });
+        }
+        const sellerId = sellerRows[0].id;
+
+        // Ensure product belongs to this seller
+        const [productRows] = await pool.promise().query('SELECT id FROM products WHERE id = ? AND seller_id = ?', [productId, sellerId]);
+        if (productRows.length === 0) {
+            return res.status(404).json({ error: 'Product not found or access denied' });
+        }
+
+        await pool.promise().query(
+            'UPDATE products SET name = ?, description = ?, price = ?, quantity = ?, category = ?, image_url = ? WHERE id = ?',
+            [name, description, price, quantity, category, image_url, productId]
+        );
+        res.json({ message: 'Product updated' });
+    } catch (err) {
+        console.error('Error updating product:', err);
+        res.status(500).json({ error: 'Database error' });
+    }
+});
+
+
+
+
+//seller-products.html
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Products - MarketCore Seller</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+        }
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.8;
+        }
+        .nav-links a:hover { opacity: 1; }
+        .logout-btn {
+            background: transparent;
+            border: 1px solid white;
+            color: white;
+            padding: 0.5rem 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .logout-btn:hover {
+            background: white;
+            color: #1e3c72;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+        h2 {
+            color: #1e3c72;
+            margin-bottom: 1.5rem;
+        }
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        .form-group {
+            margin-bottom: 1rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #1e3c72;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        .btn {
+            background: #1e3c72;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        .btn:hover {
+            background: #0b5e7c;
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .btn-sm {
+            background: #1e3c72;
+            color: white;
+            padding: 0.3rem 0.8rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 0.5rem;
+            font-size: 0.8rem;
+        }
+        .btn-sm.delete {
+            background: #dc3545;
+        }
+        .btn-sm.delete:hover {
+            background: #c82333;
+        }
+        .btn-sm.edit {
+            background: #ffc107;
+            color: #333;
+        }
+        .btn-sm.edit:hover {
+            background: #e0a800;
+        }
+        .table-container {
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        th {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem;
+            text-align: left;
+        }
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #eef2f6;
+            vertical-align: middle;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        .product-thumb {
+            width: 50px;
+            height: 50px;
+            object-fit: cover;
+            border-radius: 4px;
+            border: 1px solid #ddd;
+        }
+        .message {
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            display: none;
+        }
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #1e3c72;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        .image-preview {
+            margin-top: 10px;
+            max-width: 200px;
+            max-height: 200px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 5px;
+            display: none;
+        }
+        .image-preview img {
+            width: 100%;
+            height: auto;
+            border-radius: 4px;
+        }
+        small {
+            color: #666;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo">MarketCore Seller</a>
+        <div class="nav-links">
+            <a href="home.html">Home</a>
+            <a href="dashboard.html">Dashboard</a>
+            <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <a href="dashboard.html" class="back-link">← Back to Dashboard</a>
+        <h2>Manage Products</h2>
+
+        <div id="message" class="message"></div>
+
+        <!-- Product Form (Add/Edit) -->
+        <div class="card">
+            <h3 id="formTitle">Add New Product</h3>
+            <form id="productForm">
+                <input type="hidden" id="productId">
+                <div class="form-group">
+                    <label for="name">Product Name *</label>
+                    <input type="text" id="name" required>
+                </div>
+                <div class="form-group">
+                    <label for="description">Description</label>
+                    <textarea id="description"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="price">Price *</label>
+                    <input type="number" step="0.01" id="price" required>
+                </div>
+                <div class="form-group">
+                    <label for="quantity">Quantity</label>
+                    <input type="number" id="quantity" value="0">
+                </div>
+                <div class="form-group">
+                    <label for="category">Category</label>
+                    <input type="text" id="category" placeholder="e.g., Electronics">
+                </div>
+                <div class="form-group">
+                    <label for="productImage">Product Image</label>
+                    <input type="file" id="productImage" name="productImage" accept="image/*">
+                    <small>Optional. Max 5MB. Image will be uploaded after saving.</small>
+                    <div id="imagePreviewContainer" class="image-preview">
+                        <img id="imagePreview" src="#" alt="Image preview">
+                    </div>
+                </div>
+                <button type="submit" class="btn" id="saveBtn">Save Product</button>
+                <button type="button" class="btn" id="cancelEdit" style="background: #6c757d; margin-left: 1rem; display: none;">Cancel</button>
+            </form>
+        </div>
+
+        <!-- Products List -->
+        <div class="card">
+            <h3>Your Products</h3>
+            <div id="loading" class="loading">Loading products...</div>
+            <div id="tableContainer" style="display: none;">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Image</th>
+                            <th>ID</th>
+                            <th>Name</th>
+                            <th>Price</th>
+                            <th>Quantity</th>
+                            <th>Category</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const logoutBtn = document.getElementById('logoutBtn');
+        logoutBtn.addEventListener('click', async () => {
+            await fetch('/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        });
+
+        // Image preview
+        const productImageInput = document.getElementById('productImage');
+        const imagePreviewContainer = document.getElementById('imagePreviewContainer');
+        const imagePreview = document.getElementById('imagePreview');
+
+        productImageInput.addEventListener('change', function() {
+            const file = this.files[0];
+            if (file) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    imagePreview.src = e.target.result;
+                    imagePreviewContainer.style.display = 'block';
+                };
+                reader.readAsDataURL(file);
+            } else {
+                imagePreviewContainer.style.display = 'none';
+                imagePreview.src = '#';
+            }
+        });
+
+        // Helper to show messages
+        function showMessage(msg, type) {
+            const msgDiv = document.getElementById('message');
+            msgDiv.textContent = msg;
+            msgDiv.className = `message ${type}`;
+            msgDiv.style.display = 'block';
+            setTimeout(() => msgDiv.style.display = 'none', 5000);
+        }
+
+        // Fetch and display products
+        async function loadProducts() {
+            try {
+                const res = await fetch('/api/seller/products');
+                if (!res.ok) {
+                    if (res.status === 403) {
+                        window.location.href = '/dashboard';
+                        return;
+                    }
+                    throw new Error('Failed to load products');
+                }
+                const products = await res.json();
+                const tbody = document.getElementById('productsTableBody');
+                tbody.innerHTML = '';
+
+                if (products.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="7" style="text-align: center;">No products found. Add your first product above.</td></tr>';
+                } else {
+                    products.forEach(p => {
+                        const row = document.createElement('tr');
+                        const imageHtml = p.image_url ? `<img src="${p.image_url}" class="product-thumb" alt="${p.name}">` : '—';
+                        row.innerHTML = `
+                            <td>${imageHtml}</td>
+                            <td>${p.id}</td>
+                            <td>${p.name}</td>
+                            <td>$${parseFloat(p.price).toFixed(2)}</td>
+                            <td>${p.quantity}</td>
+                            <td>${p.category || '-'}</td>
+                            <td>
+                                <button class="btn-sm edit" onclick="editProduct(${p.id})">Edit</button>
+                                <button class="btn-sm delete" onclick="deleteProduct(${p.id})">Delete</button>
+                            </td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                }
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('tableContainer').style.display = 'block';
+            } catch (err) {
+                console.error(err);
+                showMessage('Error loading products', 'error');
+            }
+        }
+
+        // Handle form submit (add/update)
+        document.getElementById('productForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById('saveBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = 'Saving...';
+
+            const productId = document.getElementById('productId').value;
+            const fileInput = document.getElementById('productImage');
+            let imageUrl = null;
+
+            try {
+                // 1. Upload image if selected
+                if (fileInput.files.length > 0) {
+                    const file = fileInput.files[0];
+                    
+                    // Validate file size (5MB max)
+                    if (file.size > 5 * 1024 * 1024) {
+                        showMessage('File too large. Maximum 5MB.', 'error');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Save Product';
+                        return;
+                    }
+
+                    // Upload file
+                    const uploadFormData = new FormData();
+                    uploadFormData.append('image', file);
+
+                    const uploadRes = await fetch('/api/upload', {
+                        method: 'POST',
+                        body: uploadFormData
+                    });
+
+                    const uploadData = await uploadRes.json();
+                    
+                    if (!uploadRes.ok) {
+                        showMessage(uploadData.error || 'Image upload failed', 'error');
+                        submitBtn.disabled = false;
+                        submitBtn.textContent = 'Save Product';
+                        return;
+                    }
+
+                    imageUrl = uploadData.url;
+                } else if (!productId) {
+                    // No image for new product – optional, you can allow no image
+                    // If you want to require an image, add validation here
+                }
+
+                // 2. Prepare product data
+                const productData = {
+                    name: document.getElementById('name').value,
+                    description: document.getElementById('description').value,
+                    price: parseFloat(document.getElementById('price').value),
+                    quantity: parseInt(document.getElementById('quantity').value) || 0,
+                    category: document.getElementById('category').value,
+                    image_url: imageUrl // If no new image, this will be null (for new products) or not sent for edit? For edit, we need to keep existing image if no new one.
+                };
+
+                // For edit, if no new image, we should not overwrite with null. We'll handle by fetching existing image in edit function.
+                // But for simplicity, we'll send the existing image URL from the form (which was populated in edit) – we need to store it somewhere.
+                // Let's modify editProduct to store current image URL in a hidden field or data attribute.
+                // We'll add a hidden field for current image.
+
+                const url = productId ? `/api/seller/products/${productId}` : '/api/seller/products';
+                const method = productId ? 'PUT' : 'POST';
+
+                const res = await fetch(url, {
+                    method,
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(productData)
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    showMessage(productId ? 'Product updated' : 'Product created', 'success');
+                    resetForm();
+                    loadProducts();
+                } else {
+                    showMessage(data.error || 'Error saving product', 'error');
+                }
+            } catch (err) {
+                console.error('Error:', err);
+                showMessage('Network error', 'error');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = 'Save Product';
+            }
+        });
+
+        // Edit product: fetch and populate form
+        window.editProduct = async (id) => {
+            try {
+                const res = await fetch(`/api/seller/products/${id}`);
+                if (!res.ok) throw new Error('Failed to fetch');
+                const product = await res.json();
+                document.getElementById('productId').value = product.id;
+                document.getElementById('name').value = product.name;
+                document.getElementById('description').value = product.description || '';
+                document.getElementById('price').value = product.price;
+                document.getElementById('quantity').value = product.quantity;
+                document.getElementById('category').value = product.category || '';
+                // If product has image, show preview
+                if (product.image_url) {
+                    imagePreview.src = product.image_url;
+                    imagePreviewContainer.style.display = 'block';
+                } else {
+                    imagePreviewContainer.style.display = 'none';
+                }
+                document.getElementById('formTitle').textContent = 'Edit Product';
+                document.getElementById('cancelEdit').style.display = 'inline-block';
+                // Clear file input
+                document.getElementById('productImage').value = '';
+            } catch (err) {
+                showMessage('Error loading product for edit', 'error');
+            }
+        };
+
+        // Delete product
+        window.deleteProduct = async (id) => {
+            if (!confirm('Delete this product?')) return;
+            try {
+                const res = await fetch(`/api/seller/products/${id}`, { method: 'DELETE' });
+                if (res.ok) {
+                    showMessage('Product deleted', 'success');
+                    loadProducts();
+                } else {
+                    showMessage('Delete failed', 'error');
+                }
+            } catch (err) {
+                showMessage('Network error', 'error');
+            }
+        };
+
+        // Reset form to "Add" mode
+        function resetForm() {
+            document.getElementById('productForm').reset();
+            document.getElementById('productId').value = '';
+            document.getElementById('formTitle').textContent = 'Add New Product';
+            document.getElementById('cancelEdit').style.display = 'none';
+            imagePreviewContainer.style.display = 'none';
+            imagePreview.src = '#';
+        }
+
+        document.getElementById('cancelEdit').addEventListener('click', resetForm);
+
+        // Initial load
+        loadProducts();
+    </script>
+</body>
+</html>
+
+
+
+GET /api/seller/products
+const [products] = await pool.promise().query(
+            'SELECT id, name, description, price, quantity, category, image_url, created_at FROM products WHERE seller_id = ? ORDER BY created_at DESC',
+            [sellerId]
+        );
+		
+		
+		
+		
+		
+//dashboard.html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - MarketCore</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+
+        .navbar {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+
+        .navbar .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+
+        .nav-links a:hover {
+            opacity: 1;
+        }
+
+        .logout-btn {
+            background: transparent;
+            border: 1px solid white;
+            color: white;
+            padding: 0.5rem 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+
+        .logout-btn:hover {
+            background: white;
+            color: #1e3c72;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+
+        .welcome-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            margin-bottom: 2rem;
+            border-left: 6px solid #1e3c72;
+        }
+
+        .welcome-card h1 {
+            font-size: 2rem;
+            color: #1e3c72;
+            margin-bottom: 0.5rem;
+        }
+
+        .welcome-card p {
+            color: #555;
+            margin-bottom: 0.5rem;
+        }
+
+        .role-badge {
+            display: inline-block;
+            background: #0b5e7c;
+            color: white;
+            padding: 0.3rem 1.2rem;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+
+        .modules {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .module-card {
+            background: white;
+            border-radius: 16px;
+            padding: 1.8rem;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            transition: transform 0.3s, box-shadow 0.3s;
+            display: flex;
+            flex-direction: column;
+            border: 1px solid #eef2f6;
+        }
+
+        .module-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+        }
+
+        .module-icon {
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+
+        .module-card h3 {
+            color: #1e3c72;
+            font-size: 1.4rem;
+            margin-bottom: 0.8rem;
+        }
+
+        .module-card p {
+            color: #666;
+            margin-bottom: 1.5rem;
+            line-height: 1.5;
+            flex-grow: 1;
+        }
+
+        .module-btn {
+            background: #1e3c72;
+            color: white;
+            padding: 0.8rem 1.2rem;
+            border-radius: 30px;
+            text-decoration: none;
+            font-weight: 600;
+            text-align: center;
+            transition: background 0.3s;
+            border: none;
+            cursor: pointer;
+            display: inline-block;
+        }
+
+        .module-btn:hover {
+            background: #0b5e7c;
+        }
+
+        .loading {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #1e3c72;
+            padding: 2rem;
+        }
+
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .footer {
+            text-align: center;
+            margin-top: 3rem;
+            color: #777;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo">MarketCore</a>
+        <div class="nav-links">
+            <a href="home.html">Home</a>
+            <a href="products.html">See What's being sold</a>
+            <a href="cart.html">Cart</a>
+            <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div id="welcomeCard" class="welcome-card" style="display: none;">
+            <h1 id="welcomeMessage">Welcome back!</h1>
+            <p id="userEmail"></p>
+            <span id="roleBadge" class="role-badge"></span>
+        </div>
+
+        <h2 style="color: #1e3c72; margin-bottom: 1.5rem;">Your Modules</h2>
+        <div id="loading" class="loading">Loading dashboard...</div>
+        <div id="modulesContainer" class="modules" style="display: none;"></div>
+
+        <div class="footer">
+            &copy; 2026 MarketCore. All rights reserved.
+        </div>
+    </div>
+
+    <script>
+        // Module definitions
+        const modulesByRole = {
+            buyer: [
+                { icon: '🛒', title: 'Commodities', desc: 'Products from sellers', link: 'products.html' },
+                { icon: '📦', title: 'My Orders', desc: 'Track your purchases and order history.', link: '/orders.html' },
+                { icon: '❤️', title: 'Wishlist', desc: 'Items you\'ve saved for later.', link: 'wishlist.html' },
+            ],
+            seller: [
+                // Removed the static "My Store" card to avoid slug-less link
+                { icon: '🛍️', title: 'Products', desc: 'Add, edit, or remove your products.', link: '/seller-products.html' },
+                { icon: '📋', title: 'Orders', desc: 'View and fulfill customer orders.', link: 'seller-orders.html' },
+               
+            ],
+            admin: [
+                { icon: '👥', title: 'Manage Sellers', desc: 'Approve or suspend seller accounts.', link: '/admin-sellers.html' },
+                { icon: '📦', title: 'All Orders', desc: 'View all platform orders.', link: 'admin-orders.html' }
+                
+            ]
+        };
+
+        // Helper to add a card to the modules container
+        function addModuleCard(icon, title, desc, link = null) {
+            const container = document.getElementById('modulesContainer');
+            const card = document.createElement('div');
+            card.className = 'module-card';
+            card.innerHTML = `
+                <div class="module-icon">${icon}</div>
+                <h3>${title}</h3>
+                <p>${desc}</p>
+                ${link ? `<a href="${link}" class="module-btn">Go to ${title}</a>` : ''}
+            `;
+            container.appendChild(card);
+        }
+
+        // Main function to load dashboard
+        async function loadDashboard() {
+            try {
+                // 1. Fetch user data
+                const userRes = await fetch('/api/user');
+                if (!userRes.ok) {
+                    if (userRes.status === 401) {
+                        window.location.href = '/login.html';
+                        return;
+                    }
+                    throw new Error('Failed to fetch user data');
+                }
+                const user = await userRes.json();
+
+                // 2. Display welcome card
+                document.getElementById('welcomeMessage').textContent = `Welcome back, ${user.full_name}!`;
+                document.getElementById('userEmail').innerHTML = `<strong>Email:</strong> ${user.email}`;
+                document.getElementById('roleBadge').textContent = user.role;
+                document.getElementById('welcomeCard').style.display = 'block';
+
+                // 3. Render role-based modules
+                const modules = modulesByRole[user.role] || modulesByRole.buyer;
+                const container = document.getElementById('modulesContainer');
+                container.innerHTML = ''; // Clear any previous content
+                modules.forEach(module => {
+                    addModuleCard(module.icon, module.title, module.desc, module.link);
+                });
+
+                // 4. If user is a seller, add a public store card
+                if (user.role === 'seller') {
+                    try {
+                        const storeRes = await fetch('/api/seller/store');
+                        if (storeRes.ok) {
+                            const store = await storeRes.json();
+                            addModuleCard('🏪', 'My Public Store', 'View your storefront as customers see it.', `/store.html?slug=${store.store_slug}`);
+                        }
+                    } catch (err) {
+                        console.error('Error fetching store info:', err);
+                    }
+                }
+
+                // 5. If user is a buyer, check seller application status
+                if (user.role === 'buyer') {
+                    try {
+                        const appRes = await fetch('/api/seller/application');
+                        if (appRes.ok) {
+                            const appData = await appRes.json();
+                            if (!appData) {
+                                // No application yet
+                                addModuleCard('🏪', 'Become a Seller', 'Start selling your products.', '/seller-apply.html');
+                            } else if (appData.status === 'pending') {
+                                addModuleCard('⏳', 'Application Pending', 'Your seller application is under review.');
+                            }
+                        }
+                    } catch (err) {
+                        console.error('Error fetching seller application:', err);
+                    }
+                }
+
+                // 6. Hide loading, show modules
+                document.getElementById('loading').style.display = 'none';
+                container.style.display = 'grid';
+
+            } catch (error) {
+                console.error('Dashboard error:', error);
+                document.getElementById('loading').innerHTML = '<div class="error-message">Error loading dashboard. Please <a href="/dashboard">refresh</a>.</div>';
+            }
+        }
+
+        // Logout handler
+        document.getElementById('logoutBtn').addEventListener('click', async () => {
+            try {
+                const response = await fetch('/logout', { method: 'POST' });
+                if (response.ok) {
+                    window.location.href = '/login.html';
+                } else {
+                    alert('Logout failed.');
+                }
+            } catch (err) {
+                console.error('Logout error:', err);
+            }
+        });
+
+        // Start loading
+        loadDashboard();
+    </script>
+</body>
+</html>

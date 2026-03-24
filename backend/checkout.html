@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Checkout - MarketCore</title>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+        }
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.8;
+        }
+        .nav-links a:hover { opacity: 1; }
+        .logout-btn {
+            background: transparent;
+            border: 1px solid white;
+            color: white;
+            padding: 0.5rem 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .logout-btn:hover {
+            background: white;
+            color: #1e3c72;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+        }
+        .checkout-form {
+            flex: 2 1 600px;
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        }
+        .order-summary {
+            flex: 1 1 300px;
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            align-self: start;
+        }
+        h2 {
+            color: #1e3c72;
+            margin-bottom: 1.5rem;
+        }
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+        label {
+            display: block;
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+            color: #333;
+        }
+        input, textarea, select {
+            width: 100%;
+            padding: 0.8rem;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            font-size: 1rem;
+        }
+        input:focus, textarea:focus, select:focus {
+            outline: none;
+            border-color: #1e3c72;
+        }
+        textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+        .btn {
+            background: #1e3c72;
+            color: white;
+            padding: 0.8rem 1.5rem;
+            border: none;
+            border-radius: 30px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            width: 100%;
+            font-size: 1.1rem;
+        }
+        .btn:hover {
+            background: #0b5e7c;
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #1e3c72;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .summary-item {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 0.5rem;
+        }
+        .summary-total {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: #1e3c72;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 2px solid #eef2f6;
+        }
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        .error {
+            color: #721c24;
+            background: #f8d7da;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+        .success {
+            color: #155724;
+            background: #d4edda;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+        .item-list {
+            margin-bottom: 1rem;
+        }
+        .item-row {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #555;
+            margin-bottom: 0.3rem;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo">MarketCore</a>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/products.html">Products</a>
+            <a href="/cart.html">Cart</a>
+            <a href="/dashboard">Dashboard</a>
+            <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <div class="checkout-form">
+            <a href="/cart.html" class="back-link">← Back to Cart</a>
+            <h2>Checkout</h2>
+            <div id="message"></div>
+            <form id="checkoutForm">
+                <h3>Shipping Address</h3>
+                <div class="form-group">
+                    <label for="fullName">Full Name</label>
+                    <input type="text" id="fullName" required>
+                </div>
+                <div class="form-group">
+                    <label for="addressLine1">Address Line 1</label>
+                    <input type="text" id="addressLine1" required>
+                </div>
+                <div class="form-group">
+                    <label for="addressLine2">Address Line 2</label>
+                    <input type="text" id="addressLine2">
+                </div>
+                <div class="form-group">
+                    <label for="city">City</label>
+                    <input type="text" id="city" required>
+                </div>
+                <div class="form-group">
+                    <label for="state">State / Province</label>
+                    <input type="text" id="state" required>
+                </div>
+                <div class="form-group">
+                    <label for="zip">Postal Code</label>
+                    <input type="text" id="zip" required>
+                </div>
+                <div class="form-group">
+                    <label for="country">Country</label>
+                    <input type="text" id="country" required value="USA">
+                </div>
+
+                <h3 style="margin-top:2rem;">Billing Address</h3>
+                <div class="form-group">
+                    <input type="checkbox" id="sameAsShipping" checked>
+                    <label for="sameAsShipping" style="display:inline;">Same as shipping</label>
+                </div>
+                <div id="billingFields" style="display:none;">
+                    <div class="form-group">
+                        <label for="billingFullName">Full Name</label>
+                        <input type="text" id="billingFullName">
+                    </div>
+                    <div class="form-group">
+                        <label for="billingAddressLine1">Address Line 1</label>
+                        <input type="text" id="billingAddressLine1">
+                    </div>
+                    <div class="form-group">
+                        <label for="billingAddressLine2">Address Line 2</label>
+                        <input type="text" id="billingAddressLine2">
+                    </div>
+                    <div class="form-group">
+                        <label for="billingCity">City</label>
+                        <input type="text" id="billingCity">
+                    </div>
+                    <div class="form-group">
+                        <label for="billingState">State / Province</label>
+                        <input type="text" id="billingState">
+                    </div>
+                    <div class="form-group">
+                        <label for="billingZip">Postal Code</label>
+                        <input type="text" id="billingZip">
+                    </div>
+                    <div class="form-group">
+                        <label for="billingCountry">Country</label>
+                        <input type="text" id="billingCountry">
+                    </div>
+                </div>
+
+                <h3 style="margin-top:2rem;">Payment Method</h3>
+                <div class="form-group">
+                    <select id="paymentMethod">
+                        <option value="cod">Cash on Delivery</option>
+                        <option value="card" disabled>Credit Card (coming soon)</option>
+                        <option value="paypal" disabled>PayPal (coming soon)</option>
+                    </select>
+                </div>
+
+                <button type="submit" class="btn" id="placeOrderBtn">Place Order</button>
+            </form>
+        </div>
+
+        <div class="order-summary">
+            <h2>Order Summary</h2>
+            <div id="summaryLoading" class="loading">Loading...</div>
+            <div id="summaryContent" style="display:none;">
+                <div id="itemsList" class="item-list"></div>
+                <div class="summary-item">
+                    <span>Subtotal:</span>
+                    <span id="subtotal">$0.00</span>
+                </div>
+                <div class="summary-item">
+                    <span>Shipping:</span>
+                    <span id="shipping">$0.00</span>
+                </div>
+                <div class="summary-item">
+                    <span>Tax:</span>
+                    <span id="tax">$0.00</span>
+                </div>
+                <div class="summary-total">
+                    <span>Total:</span>
+                    <span id="grandTotal">$0.00</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const logoutBtn = document.getElementById('logoutBtn');
+        logoutBtn.addEventListener('click', async () => {
+            await fetch('/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        });
+
+        // Toggle billing fields
+        document.getElementById('sameAsShipping').addEventListener('change', function(e) {
+            document.getElementById('billingFields').style.display = e.target.checked ? 'none' : 'block';
+        });
+
+        // Load order summary
+        async function loadSummary() {
+            try {
+                const res = await fetch('/api/checkout/summary');
+                const data = await res.json();
+                if (!res.ok) throw new Error(data.error);
+
+                // Display items
+                const itemsList = document.getElementById('itemsList');
+                itemsList.innerHTML = '';
+                data.items.forEach(item => {
+                    const div = document.createElement('div');
+                    div.className = 'item-row';
+                    div.innerHTML = `
+                        <span>${item.name} x ${item.quantity}</span>
+                        <span>$${(item.price * item.quantity).toFixed(2)}</span>
+                    `;
+                    itemsList.appendChild(div);
+                });
+
+                document.getElementById('subtotal').textContent = `$${data.subtotal.toFixed(2)}`;
+                document.getElementById('shipping').textContent = `$${data.shipping.toFixed(2)}`;
+                document.getElementById('tax').textContent = `$${data.tax.toFixed(2)}`;
+                document.getElementById('grandTotal').textContent = `$${data.grandTotal.toFixed(2)}`;
+
+                document.getElementById('summaryLoading').style.display = 'none';
+                document.getElementById('summaryContent').style.display = 'block';
+            } catch (err) {
+                document.getElementById('summaryLoading').innerHTML = '<div class="error">Failed to load order summary. <a href="/cart.html">Go back to cart</a></div>';
+            }
+        }
+
+        // Handle form submission
+        document.getElementById('checkoutForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const sameAsShipping = document.getElementById('sameAsShipping').checked;
+
+            // Build address strings
+            const shippingAddr = {
+                fullName: document.getElementById('fullName').value,
+                line1: document.getElementById('addressLine1').value,
+                line2: document.getElementById('addressLine2').value,
+                city: document.getElementById('city').value,
+                state: document.getElementById('state').value,
+                zip: document.getElementById('zip').value,
+                country: document.getElementById('country').value,
+            };
+            const shippingAddressStr = JSON.stringify(shippingAddr);
+
+            let billingAddressStr;
+            if (sameAsShipping) {
+                billingAddressStr = shippingAddressStr;
+            } else {
+                const billingAddr = {
+                    fullName: document.getElementById('billingFullName').value,
+                    line1: document.getElementById('billingAddressLine1').value,
+                    line2: document.getElementById('billingAddressLine2').value,
+                    city: document.getElementById('billingCity').value,
+                    state: document.getElementById('billingState').value,
+                    zip: document.getElementById('billingZip').value,
+                    country: document.getElementById('billingCountry').value,
+                };
+                billingAddressStr = JSON.stringify(billingAddr);
+            }
+
+            const paymentMethod = document.getElementById('paymentMethod').value;
+
+            const placeOrderBtn = document.getElementById('placeOrderBtn');
+            placeOrderBtn.disabled = true;
+            placeOrderBtn.textContent = 'Placing Order...';
+
+            try {
+                const res = await fetch('/api/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        shippingAddress: shippingAddressStr,
+                        billingAddress: billingAddressStr,
+                        paymentMethod
+                    })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    // Redirect to confirmation page
+                    window.location.href = `/order-confirmation.html?orderNumber=${data.orderNumber}`;
+                } else {
+                    showMessage(data.error || 'Order failed', 'error');
+                    placeOrderBtn.disabled = false;
+                    placeOrderBtn.textContent = 'Place Order';
+                }
+            } catch (err) {
+                showMessage('Network error. Please try again.', 'error');
+                placeOrderBtn.disabled = false;
+                placeOrderBtn.textContent = 'Place Order';
+            }
+        });
+
+        function showMessage(msg, type) {
+            const msgDiv = document.getElementById('message');
+            msgDiv.className = type;
+            msgDiv.textContent = msg;
+        }
+
+        loadSummary();
+    </script>
+</body>
+</html>
