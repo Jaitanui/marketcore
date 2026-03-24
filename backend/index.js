@@ -63,11 +63,15 @@ app.set('views', path.join(__dirname, '..', 'frontend', 'views'));
 
 
 // MySQL connection pool (for queries)
+const PORT = process.env.PORT || 3000;
 const pool = mysql.createPool({
-    host: process.env.DB_HOST || 'localhost',
-    user: process.env.DB_USER || 'root',
-    password: process.env.DB_PASSWORD || 'K2e8h5@9690jairus',
-    database: process.env.DB_NAME || 'marketcore',
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
+    port: process.env.DB_PORT || 3306,
+    // For Aiven, add SSL:
+    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
