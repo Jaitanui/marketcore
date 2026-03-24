@@ -204,7 +204,7 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
 
 
 // Signup endpoint
-app.post('api/signup', async (req, res) => {
+app.post('/api/signup', async (req, res) => {
     const { fullName, email, password } = req.body;
 
     if (!fullName || !email || !password) {
@@ -243,7 +243,7 @@ app.post('api/signup', async (req, res) => {
 });
 
 // Login endpoint
-app.post('/login', async (req, res) => {
+app.post('/api/login', async (req, res) => {
     const { email, password } = req.body;
 
     if (!email || !password) {
@@ -1387,7 +1387,7 @@ app.get('/seller/products', (req, res) => {
 });
 
 // Logout route
-app.post('/logout', (req, res) => {
+app.post('/api/logout', (req, res) => {
     req.session.destroy((err) => {
         if (err) {
             return res.status(500).json({ error: 'Could not log out.' });
