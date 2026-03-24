@@ -9,7 +9,7 @@ require('dotenv').config();
 
 
 
-// Allow requests from your Netlify site
+
 
 
 //new code from hapa
@@ -51,7 +51,7 @@ const upload = multer({
 const app = express();
 app.set('trust proxy', 1);
 
-
+// Allow requests from your Netlify site
 app.use(cors({
     origin: 'https://marketcoremultivendor.netlify.app', 
     credentials: true
