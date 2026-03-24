@@ -204,7 +204,7 @@ app.post('/api/upload', upload.single('image'), async (req, res) => {
 
 
 // Signup endpoint
-app.post('/signup', async (req, res) => {
+app.post('api/signup', async (req, res) => {
     const { fullName, email, password } = req.body;
 
     if (!fullName || !email || !password) {
