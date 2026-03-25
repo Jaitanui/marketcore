@@ -73,12 +73,11 @@ app.set('views', path.join(__dirname, '..', 'frontend', 'views'));
 // MySQL connection pool (for queries)
 
 const pool = mysql.createPool({
-    host: process.env.DB_HOST,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
-    port: process.env.DB_PORT || 3306,
-    ssl: process.env.DB_SSL === 'true' ? { rejectUnauthorized: false } : false,
+    host: process.env.MYSQLHOST,
+    user: process.env.MYSQLUSER,
+    password: process.env.MYSQLPASSWORD,
+    database: process.env.MYSQLDATABASE,
+    port: process.env.MYSQLPORT || 3306,
     waitForConnections: true,
     connectionLimit: 10,
     queueLimit: 0
@@ -96,11 +95,11 @@ pool.getConnection((err, connection) => {
 
 // Session store using MySQL (separate pool for sessions)
 const sessionStore = new MySQLStore({
-    host: process.env.DB_HOST,
-    port: process.env.DB_PORT || 3306,
-    user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD,
-    database: process.env.DB_NAME,
+    host: process.env.MYSQLHOST,
+    port: process.env.MYSQLPORT || 3306,
+    user: process.env.MYSQLUSER,
+    password: process.env.MYSQLPASSWORD,
+    database: process.env.MYSQLDATABASE,
     clearExpired: true,
     checkExpirationInterval: 900000,
     expiration: 86400000
@@ -111,12 +110,12 @@ app.use(session({
     store: sessionStore,
     resave: false,
     saveUninitialized: false,
-    cookie: {
-        maxAge: 1000 * 60 * 60 * 24 * 7, // 1 week
-        httpOnly: true,
-        secure: process.env.NODE_ENV === 'production',
-		sameSite: 'lax'
-    }
+	cookie: {
+	maxAge: 7 * 24 * 60 * 60 * 1000,
+	httpOnly: true,
+	secure: true,               // Railway uses HTTPS
+	sameSite: 'lax'
+	}
 }));
 
 // Create users table if not exists
@@ -1403,7 +1402,7 @@ console.log('Environment:', process.env.NODE_ENV);
 console.log('DB_HOST:', process.env.DB_HOST);
 
 // Start server
-const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => {
-    console.log(`🚀 Server running on http://localhost:${PORT}`);
-});
+//const PORT = process.env.PORT || 3000;
+//app.listen(PORT, () => {
+  //  console.log(`🚀 Server running on http://localhost:${PORT}`);
+//});
