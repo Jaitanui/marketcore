@@ -1,1 +1,1 @@
-/api/*  https://marketcore-backend-production.up.railway.app
+/api/*  https://marketcore-backend-production.up.railway.app/api/:splat  200
