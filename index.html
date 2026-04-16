@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google-site-verification" content="50f8wSSpH9Rh5AKWT6wqIG9Cz7EXTALfvU8Dc2f0P9c" />
+    <title>MarketCore | Multi-Vendor Marketplace</title>
+    <link rel="icon" href="marketcorelogo.png" type="image/png">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .navbar .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+        }
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.8;
+            transition: opacity 0.3s;
+        }
+        .nav-links a:hover {
+            opacity: 1;
+        }
+        .btn {
+            background: #1e3c72;
+            color: white;
+            border: none;
+            padding: 0.5rem 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover {
+            background: #0b5e7c;
+        }
+        .btn-outline {
+            background: transparent;
+            border: 2px solid white;
+            color: white;
+            padding: 0.5rem 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn-outline:hover {
+            background: white;
+            color: #1e3c72;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+        .hero {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 2rem;
+            margin: 4rem 0;
+        }
+        .hero-content {
+            flex: 1 1 400px;
+        }
+        .hero h1 {
+            font-size: 3rem;
+            color: #1e3c72;
+            margin-bottom: 1rem;
+        }
+        .hero p {
+            color: #666;
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+        .hero-buttons {
+            display: flex;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+        .hero-image {
+            flex: 1 1 400px;
+            text-align: center;
+        }
+        .section-title {
+            color: #1e3c72;
+            font-size: 2rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+        .features {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 2rem;
+            margin: 4rem 0;
+        }
+        .feature-card {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            text-align: center;
+            border: 1px solid #eef2f6;
+        }
+        .feature-card .number {
+            width: 60px;
+            height: 60px;
+            background: #1e3c72;
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin: 0 auto 1rem;
+        }
+        .feature-card h3 {
+            color: #1e3c72;
+            margin-bottom: 1rem;
+        }
+        .feature-card p {
+            color: #666;
+            line-height: 1.6;
+        }
+        .cta {
+            background: white;
+            border-radius: 16px;
+            padding: 3rem;
+            text-align: center;
+            margin: 4rem 0;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        }
+        .cta h2 {
+            color: #1e3c72;
+            font-size: 2.5rem;
+            margin-bottom: 1rem;
+        }
+        .cta p {
+            color: #666;
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+        }
+        .cta .btn {
+            padding: 0.8rem 2rem;
+            font-size: 1.2rem;
+        }
+        .footer {
+            background: #1e3c72;
+            color: white;
+            padding: 3rem 0;
+            margin-top: 4rem;
+        }
+        .footer-content {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 1.5rem;
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 2rem;
+        }
+        .footer h4 {
+            margin-bottom: 1rem;
+            font-size: 1.2rem;
+        }
+        .footer ul {
+            list-style: none;
+        }
+        .footer li {
+            margin-bottom: 0.5rem;
+        }
+        .footer a {
+            color: #ccc;
+            text-decoration: none;
+        }
+        .footer a:hover {
+            color: white;
+        }
+        .footer-bottom {
+            text-align: center;
+            padding-top: 2rem;
+            margin-top: 2rem;
+            border-top: 1px solid #334e7a;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo">MarketCore</a>
+        <div class="nav-links">
+            <a href="products.html">Products</a>
+            <a href="cart.html">Cart</a>
+            <a href="login.html" class="btn-outline">Log in</a>
+            <a href="signup.html" class="btn">Sign up</a>
+        </div>
+    </nav>
+
+    <div class="container">
+        <section class="hero">
+            <div class="hero-content">
+                <h1>The Marketplace for <span style="color: #0b5e7c;">Everything</span> You Need.</h1>
+                <p>Shop directly from thousands of independent sellers, or start your own store and reach millions of buyers globally. Powered by secure payments and fast payouts.</p>
+                <div class="hero-buttons">
+                    <a href="products.html" class="btn">Start Shopping</a>
+                    <a href="signup.html" class="btn" style="background: #0b5e7c;">Become a Seller</a>
+                </div>
+            </div>
+            <div class="hero-image">
+                <!-- Optional image placeholder -->
+                <svg width="400" height="300" viewBox="0 0 400 300" style="background: #eef2f6; border-radius: 16px;">
+                    <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle" fill="#aaa">Marketplace Preview</text>
+                </svg>
+            </div>
+        </section>
+
+        <section>
+            <h2 class="section-title">How MarketCore Works</h2>
+            <div class="features">
+                <div class="feature-card">
+                    <div class="number">1</div>
+                    <h3>Create an Account</h3>
+                    <p>Sign up in seconds. Choose a buyer account to shop, or apply for a seller dashboard to list products.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="number">2</div>
+                    <h3>Shop or Sell</h3>
+                    <p>Browse a vast catalog of items, or list your own inventory with our easy-to-use vendor tools.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="number">3</div>
+                    <h3>Secure Transactions</h3>
+                    <p>Check out safely using Stripe Connect. We automatically route payments to sellers and handle platform fees.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="cta">
+            <h2>Ready to join the MarketCore community?</h2>
+            <p>Whether you are looking for unique items or ready to build your online empire, we have you covered.</p>
+            <a href="signup.html" class="btn" style="font-size: 1.2rem; padding: 1rem 2.5rem;">Get Started Today</a>
+        </section>
+    </div>
+
+    <footer class="footer">
+        <div class="footer-content">
+            <div>
+                <h4>MarketCore</h4>
+                <p style="color: #ccc;">The premier multi-vendor platform connecting buyers and sellers securely.</p>
+            </div>
+            <div>
+                <h4>Shop</h4>
+                <ul>
+                    <li><a href="#">All Categories</a></li>
+                    <li><a href="#">Deals</a></li>
+                    <li><a href="#">New Arrivals</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4>Sell</h4>
+                <ul>
+                    <li><a href="#">Seller Dashboard</a></li>
+                    <li><a href="#">Vendor Guidelines</a></li>
+                    <li><a href="#">Fees & Payouts</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4>Support</h4>
+                <ul>
+                    <li><a href="#">Help Center</a></li>
+                    <li><a href="#">Terms of Service</a></li>
+                    <li><a href="#">Privacy Policy</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            &copy; 2026 MarketCore. All rights reserved.
+        </div>
+    </footer>
+</body>
+</html>
