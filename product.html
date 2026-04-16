@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Details - MarketCore</title>
+    <link rel="icon" href="marketcorelogo.png" type="image/png">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+        }
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.8;
+        }
+        .nav-links a:hover { opacity: 1; }
+        .logout-btn {
+            background: transparent;
+            border: 1px solid white;
+            color: white;
+            padding: 0.5rem 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .logout-btn:hover {
+            background: white;
+            color: #1e3c72;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #1e3c72;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .product-detail {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+        }
+        .product-image {
+            flex: 1 1 300px;
+            max-width: 400px;
+        }
+        .product-image img {
+            width: 100%;
+            border-radius: 8px;
+        }
+        .product-info {
+            flex: 2 1 400px;
+        }
+        .product-name {
+            font-size: 2rem;
+            color: #1e3c72;
+            margin-bottom: 0.5rem;
+        }
+        .product-price {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #0b5e7c;
+            margin-bottom: 1rem;
+        }
+        .product-meta {
+            color: #666;
+            margin-bottom: 1rem;
+        }
+        .product-description {
+            line-height: 1.6;
+            margin-bottom: 2rem;
+        }
+        .btn {
+            background: #1e3c72;
+            color: white;
+            border: none;
+            padding: 0.8rem 2rem;
+            border-radius: 30px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+            display: inline-block;
+            text-decoration: none;
+        }
+        .btn:hover {
+            background: #0b5e7c;
+        }
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+        .btn-success {
+            background: #28a745;
+        }
+        .btn-success:hover {
+            background: #218838;
+        }
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        .error {
+            color: #721c24;
+            background: #f8d7da;
+            padding: 1rem;
+            border-radius: 6px;
+        }
+        .cart-message {
+            margin-top: 1rem;
+            padding: 0.5rem;
+            border-radius: 4px;
+            display: none;
+        }
+        .cart-message.success {
+            background: #d4edda;
+            color: #155724;
+            display: block;
+        }
+        .cart-message.error {
+            background: #f8d7da;
+            color: #721c24;
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo">MarketCore</a>
+        <div class="nav-links">
+            <a href="home.html">Home</a>
+            <a href="products.html">Products</a>
+            <a href="cart.html">Cart</a>
+            <a href="wishlist.html">Wishlist</a>
+            <a href="dashboard.html">Dashboard</a>
+            <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <a href="/products.html" class="back-link">← Back to Products</a>
+        
+		<div id="loading" class="loading">Loading product details...</div>
+        <div id="productDetail" class="product-detail" style="display: none;"></div>
+    </div>
+
+    <script>
+        const logoutBtn = document.getElementById('logoutBtn');
+        logoutBtn.addEventListener('click', async () => {
+            await fetch('/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        });
+        // Get product ID from URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const productId = urlParams.get('id');
+
+        if (!productId) {
+            document.getElementById('loading').innerHTML = '<div class="error">No product ID provided. Redirecting...</div>';
+            setTimeout(() => window.location.href = '/products.html', 2000);
+        } else {
+            loadProduct(productId);
+        }
+
+        let currentProduct = null; // store product data for cart button
+
+        async function loadProduct(id) {
+            try {
+                const res = await fetch(`/api/products/${id}`);
+                if (!res.ok) throw new Error('Product not found');
+                const product = await res.json();
+                currentProduct = product;
+                displayProduct(product);
+            } catch (err) {
+                document.getElementById('loading').innerHTML = '<div class="error">Product not found.</div>';
+            }
+        }
+
+        function displayProduct(p) {
+            const container = document.getElementById('productDetail');
+            const image = p.image_url ? p.image_url : 'https://via.placeholder.com/400';
+            const sellerName = p.store_name || 'Unknown seller';
+            const category = p.category_name || 'Uncategorized';
+            const description = p.description || 'No description available.';
+            const inStock = p.quantity > 0;
+
+            container.innerHTML = `
+                <div class="product-image">
+                    <img src="${image}" alt="${p.name}">
+                </div>
+                <div class="product-info">
+                    <h1 class="product-name">${p.name}</h1>
+                    <div class="product-price">$${parseFloat(p.price).toFixed(2)}</div>
+                    <div class="product-meta">
+                        <p>Seller: <strong>${sellerName}</strong></p>
+                        <p>Category: ${category}</p>
+                        <p>Availability: ${inStock ? 'In Stock' : 'Out of Stock'}</p>
+                    </div>
+                    <div class="product-description">
+                        ${description}
+                    </div>
+                    <button class="btn" id="addToCartBtn" ${!inStock ? 'disabled' : ''}>
+                        ${inStock ? 'Add to Cart' : 'Out of Stock'}
+                    </button>
+                    <button class="btn" id="wishlistBtn" style="margin-left:1rem;">Add to Wishlist</button>
+                    <div id="cartMessage" class="cart-message"></div>
+                </div>
+            `;
+            document.getElementById('loading').style.display = 'none';
+            container.style.display = 'flex';
+
+            // Add to Cart logic
+            if (inStock) {
+                document.getElementById('addToCartBtn').addEventListener('click', addToCart);
+            }
+
+            // ========== Wishlist Logic ==========
+            const wishlistBtn = document.getElementById('wishlistBtn');
+
+            // Check if product is already in wishlist
+            fetch(`/api/wishlist/check/${p.id}`)
+                .then(res => res.json())
+                .then(data => {
+                    if (data.inWishlist) {
+                        wishlistBtn.textContent = 'Remove from Wishlist';
+                        wishlistBtn.style.background = '#dc3545';
+                    } else {
+                        wishlistBtn.textContent = 'Add to Wishlist';
+                        wishlistBtn.style.background = '#1e3c72';
+                    }
+                })
+                .catch(err => console.error('Wishlist check error:', err));
+
+            // Wishlist button click handler
+            wishlistBtn.addEventListener('click', async () => {
+                const inWishlist = wishlistBtn.textContent.includes('Remove');
+                const url = inWishlist ? `/api/wishlist/remove/${p.id}` : '/api/wishlist/add';
+                const method = inWishlist ? 'DELETE' : 'POST';
+                const body = inWishlist ? undefined : JSON.stringify({ productId: p.id });
+
+                try {
+                    const res = await fetch(url, {
+                        method,
+                        headers: { 'Content-Type': 'application/json' },
+                        body
+                    });
+                    if (res.ok) {
+                        if (inWishlist) {
+                            wishlistBtn.textContent = 'Add to Wishlist';
+                            wishlistBtn.style.background = '#1e3c72';
+                        } else {
+                            wishlistBtn.textContent = 'Remove from Wishlist';
+                            wishlistBtn.style.background = '#dc3545';
+                        }
+                    } else {
+                        const data = await res.json();
+                        alert(data.error || 'Action failed');
+                    }
+                } catch (err) {
+                    alert('Network error');
+                }
+            });
+        }
+
+        async function addToCart() {
+            const btn = document.getElementById('addToCartBtn');
+            const msgDiv = document.getElementById('cartMessage');
+            btn.disabled = true;
+            btn.textContent = 'Adding...';
+            msgDiv.style.display = 'none';
+
+            try {
+                const res = await fetch('/api/cart/add', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ productId: currentProduct.id, quantity: 1 })
+                });
+                const data = await res.json();
+                if (res.ok) {
+                    msgDiv.className = 'cart-message success';
+                    msgDiv.textContent = 'Product added to cart!';
+                    msgDiv.style.display = 'block';
+                    setTimeout(() => msgDiv.style.display = 'none', 3000);
+                } else {
+                    msgDiv.className = 'cart-message error';
+                    msgDiv.textContent = data.error || 'Failed to add to cart';
+                    msgDiv.style.display = 'block';
+                }
+            } catch (err) {
+                msgDiv.className = 'cart-message error';
+                msgDiv.textContent = 'Network error. Please try again.';
+                msgDiv.style.display = 'block';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = 'Add to Cart';
+            }
+        }
+    </script>
+</body>
+</html>

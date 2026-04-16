@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manage Sellers - MarketCore Admin</title>
+    <link rel="icon" href="marketcorelogo.png" type="image/png">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        .navbar .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+        }
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.8;
+        }
+        .nav-links a:hover {
+            opacity: 1;
+        }
+        .logout-btn {
+            background: transparent;
+            border: 1px solid white;
+            color: white;
+            padding: 0.5rem 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .logout-btn:hover {
+            background: white;
+            color: #1e3c72;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+        h2 {
+            color: #1e3c72;
+            margin-bottom: 1.5rem;
+        }
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            overflow-x: auto;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem;
+            text-align: left;
+        }
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #eef2f6;
+        }
+        tr:hover {
+            background: #f8f9fa;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+        .status-pending {
+            background: #fff3cd;
+            color: #856404;
+        }
+        .status-approved {
+            background: #d4edda;
+            color: #155724;
+        }
+        .status-suspended {
+            background: #f8d7da;
+            color: #721c24;
+        }
+        .btn-small {
+            background: #1e3c72;
+            color: white;
+            border: none;
+            padding: 0.3rem 0.8rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-right: 0.5rem;
+            font-size: 0.8rem;
+        }
+        .btn-small:hover {
+            background: #0b5e7c;
+        }
+        .btn-small.reject {
+            background: #dc3545;
+        }
+        .btn-small.reject:hover {
+            background: #c82333;
+        }
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        .error-message {
+            background: #f8d7da;
+            color: #721c24;
+            padding: 1rem;
+            border-radius: 6px;
+            margin: 1rem 0;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #1e3c72;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo">MarketCore Admin</a>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/dashboard">Dashboard</a>
+            <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <a href="dashboard.html" class="back-link">← Back to Dashboard</a>
+        <h2>Seller Applications</h2>
+        <div id="loading" class="loading">Loading sellers...</div>
+        <div id="tableContainer" class="table-container" style="display: none;">
+            <table>
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Store Name</th>
+                        <th>Owner</th>
+                        <th>Email</th>
+                        <th>Business Address</th>
+                        <th>Tax ID</th>
+                        <th>Status</th>
+                        <th>Applied On</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody id="sellersTableBody"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <script>
+        const logoutBtn = document.getElementById('logoutBtn');
+        logoutBtn.addEventListener('click', async () => {
+            await fetch('/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        });
+
+        async function loadSellers() {
+            try {
+                const res = await fetch('/api/admin/sellers');
+                if (res.status === 403) {
+                    document.getElementById('loading').innerHTML = '<div class="error-message">Admin access required. Redirecting...</div>';
+                    setTimeout(() => window.location.href = '/dashboard', 2000);
+                    return;
+                }
+                if (!res.ok) throw new Error('Failed to load');
+                const sellers = await res.json();
+
+                const tbody = document.getElementById('sellersTableBody');
+                tbody.innerHTML = '';
+
+                if (sellers.length === 0) {
+                    tbody.innerHTML = '<tr><td colspan="9" style="text-align: center;">No seller applications found.</td></tr>';
+                } else {
+                    sellers.forEach(seller => {
+                        const row = document.createElement('tr');
+                        const statusClass = `status-badge status-${seller.status}`;
+                        const statusText = seller.status.charAt(0).toUpperCase() + seller.status.slice(1);
+                        const applyDate = new Date(seller.created_at).toLocaleDateString();
+
+                        let actionButtons = '';
+                        if (seller.status === 'pending') {
+                            actionButtons = `
+                                <button class="btn-small" onclick="approveSeller(${seller.id})">Approve</button>
+                                <button class="btn-small reject" onclick="rejectSeller(${seller.id})">Reject</button>
+                            `;
+                        } else if (seller.status === 'approved') {
+                            actionButtons = `<span class="status-badge status-approved">Approved</span>`;
+                        } else {
+                            actionButtons = `<span class="status-badge status-suspended">Suspended</span>`;
+                        }
+
+                        row.innerHTML = `
+                            <td>${seller.id}</td>
+                            <td>${seller.store_name}</td>
+                            <td>${seller.full_name}</td>
+                            <td>${seller.email}</td>
+                            <td>${seller.business_address}</td>
+                            <td>${seller.tax_id || '-'}</td>
+                            <td><span class="${statusClass}">${statusText}</span></td>
+                            <td>${applyDate}</td>
+                            <td>${actionButtons}</td>
+                        `;
+                        tbody.appendChild(row);
+                    });
+                }
+
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('tableContainer').style.display = 'block';
+            } catch (err) {
+                console.error('Error loading sellers:', err);
+                document.getElementById('loading').innerHTML = '<div class="error-message">Error loading sellers. Please refresh.</div>';
+            }
+        }
+
+        window.approveSeller = async (sellerId) => {
+            if (!confirm('Approve this seller?')) return;
+            try {
+                const res = await fetch(`/api/admin/sellers/${sellerId}/approve`, { method: 'POST' });
+                if (res.ok) {
+                    loadSellers(); // refresh list
+                } else {
+                    alert('Approval failed');
+                }
+            } catch (err) {
+                alert('Error approving seller');
+            }
+        };
+
+        window.rejectSeller = async (sellerId) => {
+            if (!confirm('Reject this seller application? This will delete the application.')) return;
+            try {
+                const res = await fetch(`/api/admin/sellers/${sellerId}/reject`, { method: 'POST' });
+                if (res.ok) {
+                    loadSellers();
+                } else {
+                    alert('Rejection failed');
+                }
+            } catch (err) {
+                alert('Error rejecting seller');
+            }
+        };
+
+        loadSellers();
+    </script>
+</body>
+</html>

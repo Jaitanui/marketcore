@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Order Details - MarketCore</title>
+    <link rel="icon" href="marketcorelogo.png" type="image/png">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+        }
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.8;
+        }
+        .nav-links a:hover { opacity: 1; }
+        .logout-btn {
+            background: transparent;
+            border: 1px solid white;
+            color: white;
+            padding: 0.5rem 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .logout-btn:hover {
+            background: white;
+            color: #1e3c72;
+        }
+        .container {
+            max-width: 1000px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #1e3c72;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+        .order-header {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        .order-header h2 {
+            color: #1e3c72;
+            margin-bottom: 1rem;
+        }
+        .order-info {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 2rem;
+            margin-bottom: 1rem;
+        }
+        .info-group {
+            flex: 1 1 200px;
+        }
+        .info-label {
+            font-weight: 600;
+            color: #333;
+            margin-bottom: 0.3rem;
+        }
+        .info-value {
+            color: #666;
+        }
+        .status-badge {
+            display: inline-block;
+            padding: 0.3rem 0.8rem;
+            border-radius: 30px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: capitalize;
+        }
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-processing { background: #cce5ff; color: #004085; }
+        .status-shipped { background: #d1ecf1; color: #0c5460; }
+        .status-delivered { background: #d4edda; color: #155724; }
+        .status-cancelled { background: #f8d7da; color: #721c24; }
+        .table-container {
+            background: white;
+            border-radius: 12px;
+            overflow-x: auto;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        th {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem;
+            text-align: left;
+        }
+        td {
+            padding: 1rem;
+            border-bottom: 1px solid #eef2f6;
+        }
+        .address-section {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        }
+        .address-title {
+            font-weight: 600;
+            color: #1e3c72;
+            margin-bottom: 0.5rem;
+        }
+        .address-text {
+            color: #666;
+            white-space: pre-line;
+        }
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo">MarketCore</a>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/products.html">Products</a>
+            <a href="/cart.html">Cart</a>
+            <a href="/dashboard">Dashboard</a>
+            <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <a href="/orders.html" class="back-link">← Back to Orders</a>
+        <div id="loading" class="loading">Loading order details...</div>
+        <div id="orderContent" style="display: none;"></div>
+    </div>
+
+    <script>
+        const logoutBtn = document.getElementById('logoutBtn');
+        logoutBtn.addEventListener('click', async () => {
+            await fetch('/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        });
+
+        const urlParams = new URLSearchParams(window.location.search);
+        const orderId = urlParams.get('id');
+
+        if (!orderId) {
+            document.getElementById('loading').innerHTML = '<div class="error">No order ID provided.</div>';
+        } else {
+            loadOrder(orderId);
+        }
+
+        async function loadOrder(id) {
+            try {
+                const res = await fetch(`/api/orders/${id}`);
+                if (!res.ok) {
+                    if (res.status === 401) window.location.href = '/login.html';
+                    if (res.status === 404) throw new Error('Order not found');
+                    throw new Error('Failed to load order');
+                }
+                const data = await res.json();
+                displayOrder(data.order, data.items);
+            } catch (err) {
+                document.getElementById('loading').innerHTML = '<div class="error">' + err.message + '</div>';
+            }
+        }
+
+        function displayOrder(order, items) {
+            const container = document.getElementById('orderContent');
+            const orderDate = new Date(order.order_date).toLocaleDateString();
+            const statusClass = `status-badge status-${order.status}`;
+            const paymentClass = `status-badge status-${order.payment_status}`;
+
+            // Parse addresses if stored as JSON strings (as we did in checkout)
+            let shippingAddr = order.shipping_address;
+            let billingAddr = order.billing_address;
+            try {
+                shippingAddr = JSON.parse(order.shipping_address);
+                shippingAddr = `${shippingAddr.fullName}, ${shippingAddr.line1} ${shippingAddr.line2 || ''}, ${shippingAddr.city}, ${shippingAddr.state} ${shippingAddr.zip}, ${shippingAddr.country}`;
+            } catch (e) { /* if not JSON, keep as string */ }
+
+            try {
+                billingAddr = JSON.parse(order.billing_address);
+                billingAddr = `${billingAddr.fullName}, ${billingAddr.line1} ${billingAddr.line2 || ''}, ${billingAddr.city}, ${billingAddr.state} ${billingAddr.zip}, ${billingAddr.country}`;
+            } catch (e) { /* keep as string */ }
+
+            let itemsHtml = '';
+            items.forEach(item => {
+                itemsHtml += `
+                    <tr>
+                        <td>${item.product_name}</td>
+                        <td>${item.seller_name || 'Unknown'}</td>
+                        <td>${item.quantity}</td>
+                        <td>$${parseFloat(item.price_per_unit).toFixed(2)}</td>
+                        <td>$${parseFloat(item.total_price).toFixed(2)}</td>
+                    </tr>
+                `;
+            });
+
+            container.innerHTML = `
+                <div class="order-header">
+                    <h2>Order #${order.order_number}</h2>
+                    <div class="order-info">
+                        <div class="info-group">
+                            <div class="info-label">Date</div>
+                            <div class="info-value">${orderDate}</div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Status</div>
+                            <div class="info-value"><span class="${statusClass}">${order.status}</span></div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Payment</div>
+                            <div class="info-value"><span class="${paymentClass}">${order.payment_status}</span></div>
+                        </div>
+                        <div class="info-group">
+                            <div class="info-label">Total</div>
+                            <div class="info-value">$${parseFloat(order.grand_total).toFixed(2)}</div>
+                        </div>
+                    </div>
+                </div>
+
+                <h3 style="color: #1e3c72; margin: 1.5rem 0 1rem;">Items</h3>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>Product</th>
+                                <th>Seller</th>
+                                <th>Qty</th>
+                                <th>Price</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${itemsHtml}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div style="display: flex; gap: 2rem;">
+                    <div class="address-section" style="flex:1;">
+                        <div class="address-title">Shipping Address</div>
+                        <div class="address-text">${shippingAddr}</div>
+                    </div>
+                    <div class="address-section" style="flex:1;">
+                        <div class="address-title">Billing Address</div>
+                        <div class="address-text">${billingAddr}</div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('loading').style.display = 'none';
+            container.style.display = 'block';
+        }
+    </script>
+</body>
+</html>

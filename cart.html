@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart - MarketCore</title>
+    <link rel="icon" href="marketcorelogo.png" type="image/png">
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        body {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            min-height: 100vh;
+        }
+        .navbar {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .navbar .logo {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: white;
+            text-decoration: none;
+        }
+        .nav-links {
+            display: flex;
+            gap: 1.5rem;
+            align-items: center;
+        }
+        .nav-links a {
+            color: white;
+            text-decoration: none;
+            font-weight: 500;
+            opacity: 0.8;
+        }
+        .nav-links a:hover { opacity: 1; }
+        .logout-btn {
+            background: transparent;
+            border: 1px solid white;
+            color: white;
+            padding: 0.5rem 1.2rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: all 0.3s;
+        }
+        .logout-btn:hover {
+            background: white;
+            color: #1e3c72;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1.5rem;
+        }
+        h2 {
+            color: #1e3c72;
+            margin-bottom: 1.5rem;
+        }
+        .cart-table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+        }
+        .cart-table th {
+            background: #1e3c72;
+            color: white;
+            padding: 1rem;
+            text-align: left;
+        }
+        .cart-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #eef2f6;
+            vertical-align: middle;
+        }
+        .cart-table tr:last-child td {
+            border-bottom: none;
+        }
+        .product-image {
+            width: 80px;
+            height: 80px;
+            object-fit: cover;
+            border-radius: 8px;
+        }
+        .quantity-input {
+            width: 70px;
+            padding: 0.3rem;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        .btn {
+            background: #1e3c72;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 30px;
+            cursor: pointer;
+            font-weight: 600;
+            transition: background 0.3s;
+            text-decoration: none;
+            display: inline-block;
+        }
+        .btn:hover {
+            background: #0b5e7c;
+        }
+        .btn-small {
+            padding: 0.3rem 0.8rem;
+            font-size: 0.9rem;
+        }
+        .btn-danger {
+            background: #dc3545;
+        }
+        .btn-danger:hover {
+            background: #c82333;
+        }
+        .cart-summary {
+            margin-top: 2rem;
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.05);
+            text-align: right;
+        }
+        .total {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1e3c72;
+            margin-bottom: 1rem;
+        }
+        .empty-cart {
+            text-align: center;
+            padding: 3rem;
+            color: #666;
+        }
+        .loading {
+            text-align: center;
+            padding: 2rem;
+            color: #666;
+        }
+        .error {
+            color: #721c24;
+            background: #f8d7da;
+            padding: 1rem;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+        }
+        .back-link {
+            display: inline-block;
+            margin-bottom: 1rem;
+            color: #1e3c72;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .back-link:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <a href="/" class="logo">MarketCore</a>
+        <div class="nav-links">
+            <a href="/">Home</a>
+            <a href="/products.html">Products</a>
+            <a href="/cart.html">Cart</a>
+            <a href="/dashboard">Dashboard</a>
+            <button id="logoutBtn" class="logout-btn">Logout</button>
+        </div>
+    </nav>
+
+    <div class="container">
+        <a href="/products.html" class="back-link">← Continue Shopping</a>
+        <h2>Shopping Cart</h2>
+
+        <div id="loading" class="loading">Loading cart...</div>
+        <div id="cartContent" style="display: none;"></div>
+    </div>
+
+    <script>
+        const logoutBtn = document.getElementById('logoutBtn');
+        logoutBtn.addEventListener('click', async () => {
+            await fetch('/logout', { method: 'POST' });
+            window.location.href = '/login.html';
+        });
+
+        async function loadCart() {
+            const loadingDiv = document.getElementById('loading');
+            const cartDiv = document.getElementById('cartContent');
+
+            try {
+                const res = await fetch('/api/cart');
+                const items = await res.json();
+                loadingDiv.style.display = 'none';
+                cartDiv.style.display = 'block';
+
+                if (items.length === 0) {
+                    cartDiv.innerHTML = '<div class="empty-cart">Your cart is empty. <a href="/products.html">Start shopping</a></div>';
+                } else {
+                    let html = `
+                        <table class="cart-table">
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Price</th>
+                                    <th>Quantity</th>
+                                    <th>Total</th>
+                                    <th>Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                    `;
+                    let overallTotal = 0;
+                    items.forEach(item => {
+                        const itemTotal = item.added_price * item.quantity;
+                        overallTotal += itemTotal;
+                        html += `
+                            <tr data-item-id="${item.id}">
+                                <td>
+                                    <div style="display: flex; align-items: center; gap: 1rem;">
+                                        <img src="${item.image_url || 'https://via.placeholder.com/80'}" class="product-image" alt="${item.name}">
+                                        <div>
+                                            <strong>${item.name}</strong><br>
+                                            <small>Seller: ${item.seller_name || 'Unknown'}</small>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>$${parseFloat(item.added_price).toFixed(2)}</td>
+                                <td>
+                                    <input type="number" min="1" value="${item.quantity}" class="quantity-input" data-item-id="${item.id}">
+                                </td>
+                                <td class="item-total">$${itemTotal.toFixed(2)}</td>
+                                <td>
+                                    <button class="btn btn-small update-btn" data-item-id="${item.id}">Update</button>
+                                    <button class="btn btn-small btn-danger remove-btn" data-item-id="${item.id}">Remove</button>
+                                </td>
+                            </tr>
+                        `;
+                    });
+                    html += `
+                            </tbody>
+                        </table>
+                        <div class="cart-summary">
+                            <div class="total">Total: $${overallTotal.toFixed(2)}</div>
+                            <button class="btn" id="clearCartBtn">Clear Cart</button>
+                            <button class="btn" id="checkoutBtn">Proceed to Checkout</button>
+                        </div>
+                    `;
+                    cartDiv.innerHTML = html;
+
+                    // Attach event handlers
+                    document.querySelectorAll('.update-btn').forEach(btn => {
+                        btn.addEventListener('click', updateQuantity);
+                    });
+                    document.querySelectorAll('.remove-btn').forEach(btn => {
+                        btn.addEventListener('click', removeItem);
+                    });
+                    document.getElementById('clearCartBtn').addEventListener('click', clearCart);
+                    document.getElementById('checkoutBtn').addEventListener('click', () => {
+                        window.location.href = 'checkout.html';
+                    });
+                }
+            } catch (err) {
+                console.error(err);
+                loadingDiv.innerHTML = '<div class="error">Failed to load cart.</div>';
+            }
+        }
+
+        async function updateQuantity(e) {
+            const itemId = e.target.dataset.itemId;
+            const row = e.target.closest('tr');
+            const input = row.querySelector('.quantity-input');
+            const newQty = parseInt(input.value);
+            if (newQty < 1) {
+                alert('Quantity must be at least 1');
+                return;
+            }
+            try {
+                const res = await fetch(`/api/cart/update/${itemId}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ quantity: newQty })
+                });
+                if (res.ok) {
+                    loadCart(); // reload to reflect changes
+                } else {
+                    alert('Update failed');
+                }
+            } catch (err) {
+                alert('Network error');
+            }
+        }
+
+        async function removeItem(e) {
+            const itemId = e.target.dataset.itemId;
+            if (!confirm('Remove this item?')) return;
+            try {
+                const res = await fetch(`/api/cart/remove/${itemId}`, { method: 'DELETE' });
+                if (res.ok) {
+                    loadCart();
+                } else {
+                    alert('Remove failed');
+                }
+            } catch (err) {
+                alert('Network error');
+            }
+        }
+
+        async function clearCart() {
+            if (!confirm('Clear your entire cart?')) return;
+            try {
+                const res = await fetch('/api/cart/clear', { method: 'DELETE' });
+                if (res.ok) {
+                    loadCart();
+                } else {
+                    alert('Clear failed');
+                }
+            } catch (err) {
+                alert('Network error');
+            }
+        }
+
+        loadCart();
+    </script>
+</body>
+</html>
